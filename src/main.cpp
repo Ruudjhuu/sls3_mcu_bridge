@@ -1,61 +1,24 @@
-#include "rtmidi/RtMidi.h"
 #include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/system/detail/errc.hpp>
-#include <cstddef>
-#include <functional>
-#include <iostream>
 #include <memory>
 #include <string>
+
+#include "rtmidi/RtMidi.h"
+#include "spdlog/spdlog.h"
+
+#include "client.hpp"
+
+using namespace sls3mcubridge;
 
 const int PORT = 53000;
 const std::string HOST = "10.3.141.56";
 
-class Client : public std::enable_shared_from_this<Client> {
-public:
-  Client(boost::asio::io_context &svc) : io_context(svc), socket(io_context) {}
-
-  void connect(std::string const &host, int const &port) {
-    boost::asio::ip::tcp::resolver resolver(io_context);
-    boost::asio::ip::tcp::resolver::iterator endpoint = resolver.resolve(
-        boost::asio::ip::tcp::resolver::query(host, std::to_string(port)));
-    boost::asio::connect(this->socket, endpoint);
-  }
-
-  void send(std::vector<unsigned char> &message) {
-    socket.send(boost::asio::buffer(message));
-  }
-
-  void start_reading() {
-    socket.async_read_some(
-        boost::asio::buffer(buffer),
-        std::bind(&Client::read_handler, shared_from_this(),
-                  boost::asio::placeholders::error,
-                  boost::asio::placeholders::bytes_transferred));
-  }
-
-  boost::asio::io_context &io_context;
-  boost::asio::ip::tcp::socket socket;
-  unsigned char buffer[128];
-
-  void read_handler(const boost::system::error_code &error,
-                    std::size_t bytes_transferred) {
-    if (error.value() == boost::system::errc::success) {
-      for (int i = 0; i < bytes_transferred; i++) {
-        std::cout << std::hex << (int)buffer[i] << " ";
-      }
-      std::cout << std::endl;
-    } else {
-      std::cout << "Error reading some, ignore and go on" << std::endl;
-    }
-    start_reading();
-  }
-};
-
 int main() {
+  spdlog::info("test logging");
   boost::asio::io_context io_context;
 
   RtMidiOut *midiout_main = new RtMidiOut(RtMidi::Api::LINUX_ALSA, "MAIN");
