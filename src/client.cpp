@@ -10,7 +10,7 @@ void Client::connect(std::string const &host, int const &port) {
   boost::asio::connect(this->socket, endpoint);
 }
 
-void Client::send(std::vector<unsigned char> &message) {
+void Client::write(std::vector<unsigned char> &message) {
   socket.send(boost::asio::buffer(message));
 }
 

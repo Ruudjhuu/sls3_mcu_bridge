@@ -16,10 +16,8 @@ namespace sls3mcubridge {
 class Client : public std::enable_shared_from_this<Client> {
 public:
   Client(boost::asio::io_context &svc) : io_context(svc), socket(io_context) {}
-
   void connect(std::string const &host, int const &port);
-
-  void send(std::vector<unsigned char> &message);
+  void write(std::vector<unsigned char> &message);
   void start_reading();
 
 private:

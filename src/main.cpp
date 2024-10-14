@@ -1,9 +1,3 @@
-#include <boost/asio/connect.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/placeholders.hpp>
-#include <boost/asio/spawn.hpp>
-#include <boost/system/detail/errc.hpp>
 #include <memory>
 #include <string>
 
@@ -33,7 +27,7 @@ int main() {
   std::vector<unsigned char> data = {0x55, 0x43, 0x00, 0x01, 0x0a, 0x00,
                                      0x45, 0x51, 0x64, 0x00, 0x65, 0x00,
                                      0x4d, 0x49, 0x44, 0x49};
-  client->send(data);
+  client->write(data);
 
   // TODO try to get number of midi devices from response
 
@@ -44,7 +38,7 @@ int main() {
           0x55, 0x43, 0x00, 0x01, 0x0e, 0x00, 0x42, 0x4f, 0x6e, 0x00,
           0x69, 0x00, 0x4d, 0x69, 0x64, 0x63, 0x00, 0x00, 0x00, 0x00};
 
-  client->send(data);
+  client->write(data);
 
   client->start_reading();
 
