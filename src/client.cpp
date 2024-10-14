@@ -1,3 +1,4 @@
+#include <boost/asio/connect.hpp>
 #include <spdlog/spdlog.h>
 
 #include "client.hpp"
@@ -25,7 +26,13 @@ void Client::start_reading() {
 void Client::read_handler(const boost::system::error_code &error,
                           std::size_t bytes_transferred) {
   if (error.value() == boost::system::errc::success) {
-    parser.to_midi(buffer);
+    spdlog::info("handle message");
+    try {
+      parser.to_midi(buffer, bytes_transferred);
+    } catch (...) {
+      // ignore error and move on to next message.
+      spdlog::warn("ignore parse failure.");
+    }
   } else {
     spdlog::error("failed to read incomming TCP message");
   }

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/placeholders.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/system/detail/errc.hpp>
+#include <boost/system/detail/error_code.hpp>
 #include <cstddef>
 #include <memory>
 #include <string>
