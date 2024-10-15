@@ -1,4 +1,5 @@
 #include <boost/asio/connect.hpp>
+#include <cstddef>
 #include <spdlog/spdlog.h>
 
 #include "client.hpp"
@@ -11,7 +12,7 @@ void Client::connect(std::string const &host, int const &port) {
   boost::asio::connect(this->socket, endpoint);
 }
 
-void Client::write(std::vector<unsigned char> &message) {
+void Client::write(std::vector<std::byte> &message) {
   socket.send(boost::asio::buffer(message));
 }
 
@@ -28,7 +29,7 @@ void Client::read_handler(const boost::system::error_code &error,
   if (error.value() == boost::system::errc::success) {
     spdlog::info("handle message");
     try {
-      parser.to_midi(buffer, bytes_transferred);
+      parser.serialize(buffer, bytes_transferred);
     } catch (...) {
       // ignore error and move on to next message.
       spdlog::warn("ignore parse failure.");

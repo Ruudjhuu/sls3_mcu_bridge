@@ -1,18 +1,24 @@
 #pragma once
 
-#include <memory>
+#include <cstdint>
 #include <vector>
 
 namespace sls3mcubridge {
 
 struct midi_message {
   int device_number;
-  std::shared_ptr<std::vector<unsigned char>> message;
+  std::vector<std::byte> message;
+};
+
+struct Package {
+  std::byte header;
+  uint8_t midi_dev;
+  std::vector<std::byte> body;
 };
 
 class Parser {
 public:
   Parser() {}
-  std::shared_ptr<midi_message> to_midi(unsigned char input[], size_t length);
+  std::vector<Package> serialize(std::byte input[], size_t nr_bytes);
 };
 } // namespace sls3mcubridge

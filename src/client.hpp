@@ -12,12 +12,14 @@
 
 #include "parser.hpp"
 
+const size_t MAX_BUFFER_SIZE = 1500;
+
 namespace sls3mcubridge {
 class Client : public std::enable_shared_from_this<Client> {
 public:
   Client(boost::asio::io_context &svc) : io_context(svc), socket(io_context) {}
   void connect(std::string const &host, int const &port);
-  void write(std::vector<unsigned char> &message);
+  void write(std::vector<std::byte> &message);
   void start_reading();
 
 private:
@@ -26,6 +28,6 @@ private:
   boost::asio::io_context &io_context;
   boost::asio::ip::tcp::socket socket;
   Parser parser;
-  unsigned char buffer[128];
+  std::byte buffer[MAX_BUFFER_SIZE];
 };
 } // namespace sls3mcubridge

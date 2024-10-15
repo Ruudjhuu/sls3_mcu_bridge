@@ -3,7 +3,18 @@ project(sls3_reverse_eng VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/src)
+
+enable_testing()
+
+# Program
 add_subdirectory(src)
 
+# Testing
+include(GoogleTest)
+
+add_subdirectory(tests)
