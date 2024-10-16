@@ -45,8 +45,8 @@ TEST(TestPackageSerialization,
   };
   std::vector<std::byte> pkg2 = {
       std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x02),
-      std::byte(0x0a), std::byte(0x00), std::byte(0x4e), std::byte(0x4e),
-      std::byte(0x00), std::byte(0x00), std::byte(0x6d), std::byte(0x00),
+      std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
+      std::byte(0x00), std::byte(0x00), std::byte(0x6c), std::byte(0x00),
       std::byte(0x91), std::byte(0x11), std::byte(0x7c), std::byte(0x00),
   };
 
@@ -61,6 +61,25 @@ TEST(TestPackageSerialization,
   ASSERT_EQ(pkg1, sls3mcubridge::Package::serialize(output1));
   ASSERT_EQ(pkg2, sls3mcubridge::Package::serialize(output2));
   ASSERT_EQ(input.end(), position);
+}
+
+TEST(TestBodySerialization, test_body_serialization) {
+  std::vector<std::byte> input = {
+      std::byte(0x4d), std::byte(0x4d), std::byte(0x00), std::byte(0x00),
+      std::byte(0x6c), std::byte(0x00), std::byte(0x90), std::byte(0x10),
+      std::byte(0x7f), std::byte(0x00)};
+  auto position = input.begin();
+  auto output = sls3mcubridge::Body::deserialize(input);
+  ASSERT_EQ(input, sls3mcubridge::Body::serialize(output));
+}
+
+TEST(TestMidiSerialization, test_midi_serialization) {
+  std::vector<std::byte> input = {std::byte(0x6c), std::byte(0x00),
+                                  std::byte(0x90), std::byte(0x10),
+                                  std::byte(0x7f), std::byte(0x00)};
+  auto position = input.begin();
+  auto output = sls3mcubridge::MidiContent::deserialize(input);
+  ASSERT_EQ(input, sls3mcubridge::MidiContent::serialize(output));
 }
 
 TEST(TestHeaderSerialization, test_header_serialization) {

@@ -36,7 +36,9 @@ void Client::read_handler(const boost::system::error_code &error,
       auto position = buff_vec.begin();
       while (position != buff_vec.end()) {
         auto package = sls3mcubridge::Package::deserialize(buff_vec, position);
-        for (auto &it : package.body) {
+
+        std::cout << package.body.type << ":";
+        for (auto &it : package.body.midi_content.message) {
           std::cout << std::to_integer<int>(it) << ",";
         }
         std::cout << std::endl;
