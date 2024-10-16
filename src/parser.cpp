@@ -1,21 +1,13 @@
 #include "parser.hpp"
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace sls3mcubridge {
 
-const int DEVICE_BYTE_LOCATION = 10;
-
-const std::byte INPUT_DEVICE_ONE_BYTE = std::byte{0x6c};
-const std::byte INPUT_DEVICE_TWO_BYTE = std::byte{0x6d};
-const std::byte INPUT_DEVICE_THREE_BYTE = std::byte{0x6e};
-
 const std::byte DELIMITER = std::byte(0x0);
-
-const int TCP_MIDI_HEADER_SIZE = 12;
-const int TCP_MIN_MESSAGE_SIZE = 14;
 
 Package Package::deserialize(std::vector<std::byte> input,
                              std::vector<std::byte>::iterator &position) {
@@ -25,43 +17,16 @@ Package Package::deserialize(std::vector<std::byte> input,
   Package package;
   package.header = Header::deserialize(input, position);
 
-  for (auto it = position; position != input.end(); it++) {
-    switch (step) {
-    // midi device
-    case 0:
-      package.midi_dev = *it;
-      step++;
-      break;
-
-    // delimiter
-    case 1:
-      if (*it != DELIMITER) {
-        error = true;
-        continue;
-      }
-      step++;
-      break;
-
-    // get body
-    case 2:
-      if (*it != DELIMITER) {
-        package.body.push_back(*it);
-        continue;
-      }
-      position = it + 1;
-      return package;
-      break;
-    }
-  }
-  throw std::invalid_argument("Could not deserialize");
+  for (int i = 0; i < package.header.body_size; i++) {
+    package.body.push_back(*position);
+    position++;
+  };
+  return package;
 }
 
 std::vector<std::byte> Package::serialize(Package input) {
   std::vector<std::byte> buffer = Header::serialize(input.header);
-  buffer.push_back(input.midi_dev);
-  buffer.push_back(std::byte(DELIMITER));
   buffer.insert(buffer.end(), input.body.begin(), input.body.end());
-  buffer.push_back(std::byte(DELIMITER));
   return buffer;
 }
 
@@ -71,35 +36,32 @@ Header Header::deserialize(std::vector<std::byte> input,
   int step = 0;
   Header header;
 
-  for (auto it = position; position != input.end(); it++) {
+  for (; position != input.end(); position++) {
 
     switch (step) {
     // Header UC
     case 0:
-      if (*it != std::byte{'U'}) {
+      if (*position != std::byte{'U'}) {
         throw std::invalid_argument("expected 'U' in step " +
                                     std::to_string(step) + " but got" +
-                                    (char)*it);
+                                    (char)*position);
       }
-      header.firt_part[0] = *it;
+      header.firt_part[0] = *position;
       step++;
       break;
     case 1:
-      if (*it != std::byte{'C'}) {
+      if (*position != std::byte{'C'}) {
         throw std::invalid_argument("expected 'C' in step " +
                                     std::to_string(step) + " but got" +
-                                    (char)*it);
+                                    (char)*position);
       }
-      header.firt_part[1] = *it;
+      header.firt_part[1] = *position;
       step++;
       break;
 
     // Delimiter
     case 2:
-    case 5:
-    case 8:
-    case 9:
-      if (*it != DELIMITER) {
+      if (*position != DELIMITER) {
         throw std::invalid_argument("Expected delimiter in step " +
                                     std::to_string(step));
       }
@@ -108,30 +70,27 @@ Header Header::deserialize(std::vector<std::byte> input,
 
     // unkown pt2
     case 3:
-      header.second_part[0] = *it;
-      step++;
-      break;
-    case 4:
-      header.second_part[1] = *it;
+      header.second_part = *position;
       step++;
       break;
 
-    // unkown pt3
-    case 6:
-      header.third_part[0] = *it;
+    // body size
+    case 4:
+      header.body_size = std::to_integer<uint8_t>(*position);
       step++;
       break;
-    case 7:
-      header.third_part[1] = *it;
-      step++;
-      break;
-    case 10:
+
+    case 5:
+      if (*position != DELIMITER) {
+        throw std::invalid_argument("Expected delimiter in step " +
+                                    std::to_string(step));
+      }
       break_loop = true;
+      step++;
       break;
     }
-
     if (break_loop) {
-      position = it;
+      position++;
       break;
     }
   }
@@ -142,10 +101,8 @@ std::vector<std::byte> Header::serialize(Header input) {
   std::vector<std::byte> buffer;
   buffer.insert(buffer.end(), input.firt_part, input.firt_part + 2);
   buffer.push_back(DELIMITER);
-  buffer.insert(buffer.end(), input.second_part, input.second_part + 2);
-  buffer.push_back(DELIMITER);
-  buffer.insert(buffer.end(), input.third_part, input.third_part + 2);
-  buffer.push_back(DELIMITER);
+  buffer.push_back(input.second_part);
+  buffer.push_back(std::byte(input.body_size));
   buffer.push_back(DELIMITER);
   return buffer;
 }

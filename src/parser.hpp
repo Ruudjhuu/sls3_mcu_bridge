@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace sls3mcubridge {
@@ -15,9 +16,9 @@ struct Header {
                             std::vector<std::byte>::iterator &position);
   static std::vector<std::byte> serialize(Header input);
 
-  std::byte firt_part[2];
-  std::byte second_part[2];
-  std::byte third_part[2];
+  std::byte firt_part[2]; // always UC
+  std::byte second_part;  // unkown
+  uint8_t body_size;
 };
 
 struct Package {
@@ -26,7 +27,6 @@ struct Package {
   static std::vector<std::byte> serialize(Package input);
 
   Header header;
-  std::byte midi_dev;
   std::vector<std::byte> body;
 };
 

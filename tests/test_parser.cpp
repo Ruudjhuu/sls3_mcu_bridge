@@ -64,10 +64,9 @@ TEST(TestPackageSerialization,
 }
 
 TEST(TestHeaderSerialization, test_header_serialization) {
-  std::vector<std::byte> input = {
-      std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
-      std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
-      std::byte(0x00), std::byte(0x00)};
+  std::vector<std::byte> input = {std::byte('U'),  std::byte('C'),
+                                  std::byte(0x00), std::byte(0x01),
+                                  std::byte(0x0a), std::byte(0x00)};
 
   auto position = input.begin();
   auto output = sls3mcubridge::Header::deserialize(input, position);
@@ -79,8 +78,7 @@ TEST(TestHeaderSerialization,
      test_header_serialization_start_at_different_position) {
   std::vector<std::byte> input = {
       std::byte(0x00), std::byte(0x00), std::byte('U'),  std::byte('C'),
-      std::byte(0x00), std::byte(0x01), std::byte(0x0a), std::byte(0x00),
-      std::byte(0x4d), std::byte(0x4d), std::byte(0x00), std::byte(0x00)};
+      std::byte(0x00), std::byte(0x01), std::byte(0x0a), std::byte(0x00)};
 
   std::vector<std::byte> expectation(input.begin() + 2, input.end());
 
@@ -93,8 +91,7 @@ TEST(TestHeaderSerialization,
 TEST(TestHeaderSerialization, test_header_serialization_longer_input) {
   std::vector<std::byte> input = {
       std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
-      std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
-      std::byte(0x00), std::byte(0x00), std::byte(0x00), std::byte(0x00),
+      std::byte(0x0a), std::byte(0x00), std::byte(0x00), std::byte(0x00),
   };
 
   std::vector<std::byte> expectation(input.begin(), input.end() - 2);
