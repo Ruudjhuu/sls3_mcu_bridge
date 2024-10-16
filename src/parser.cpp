@@ -1,6 +1,5 @@
 #include "parser.hpp"
 #include <cstddef>
-#include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
 #include <vector>
