@@ -10,8 +10,6 @@
 #include <memory>
 #include <string>
 
-#include "parser.hpp"
-
 const size_t MAX_BUFFER_SIZE = 1500;
 
 namespace sls3mcubridge {
@@ -27,7 +25,6 @@ private:
                     std::size_t bytes_transferred);
   boost::asio::io_context &io_context;
   boost::asio::ip::tcp::socket socket;
-  Parser parser;
   std::byte buffer[MAX_BUFFER_SIZE];
 };
 } // namespace sls3mcubridge

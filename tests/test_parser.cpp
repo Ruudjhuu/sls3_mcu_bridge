@@ -3,47 +3,27 @@
 #include <cstddef>
 
 TEST(TestParser, test_parser_midi_device_1) {
-  sls3mcubridge::Parser parser;
-  const size_t size = 16;
-  std::byte input[size] = {
+  std::vector<std::byte> input = {
       std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
       std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
       std::byte(0x00), std::byte(0x00), std::byte(0x6c), std::byte(0x00),
       std::byte(0x90), std::byte(0x10), std::byte(0x7f), std::byte(0x00),
   };
-  std::vector<std::byte> expected_body = {std::byte(0x90), std::byte(0x10),
-                                          std::byte(0x7f)};
 
-  auto output = parser.serialize(input, size);
-  ASSERT_EQ(output.size(), 1);
-  ASSERT_EQ(output.at(0).midi_dev, 1);
-  ASSERT_EQ(output.at(0).body, expected_body);
+  sls3mcubridge::Package package;
+
+  auto output = package.deserialize(input);
+  ASSERT_EQ(input, package.serialize(output));
 }
 
-TEST(TestParser, test_parser_midi_device_2) {
-  sls3mcubridge::Parser parser;
-  const size_t size = 16;
-  std::byte input[size] = {
+TEST(TestHeaderAerialization, test_header_serialization) {
+  std::vector<std::byte> input = {
       std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
       std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
-      std::byte(0x00), std::byte(0x00), std::byte(0x6d), std::byte(0x00),
-      std::byte(0x90), std::byte(0x10), std::byte(0x7f), std::byte(0x00),
-  };
-  auto output = parser.serialize(input, size);
-  ASSERT_EQ(output.size(), 1);
-  ASSERT_EQ(output.at(0).midi_dev, 2);
-}
+      std::byte(0x00), std::byte(0x00)};
 
-TEST(TestParser, test_parser_midi_device_3) {
-  sls3mcubridge::Parser parser;
-  const size_t size = 16;
-  std::byte input[size] = {
-      std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
-      std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
-      std::byte(0x00), std::byte(0x00), std::byte(0x6e), std::byte(0x00),
-      std::byte(0x90), std::byte(0x10), std::byte(0x7f), std::byte(0x00),
-  };
-  auto output = parser.serialize(input, size);
-  ASSERT_EQ(output.size(), 1);
-  ASSERT_EQ(output.at(0).midi_dev, 3);
+  sls3mcubridge::Header header;
+
+  auto output = header.deserialize(input);
+  ASSERT_EQ(input, header.serialize(output));
 }

@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace sls3mcubridge {
@@ -17,69 +18,19 @@ const std::byte DELIMITER = std::byte(0x0);
 const int TCP_MIDI_HEADER_SIZE = 12;
 const int TCP_MIN_MESSAGE_SIZE = 14;
 
-std::vector<Package> Parser::serialize(std::byte input[], size_t nr_bytes) {
+Package Package::deserialize(std::vector<std::byte> input) {
   int step = 0;
-  int bytes_read = 0;
   bool error = false;
 
-  std::vector<Package> packages;
-  Package tmp_package;
+  Package package;
+  package.header = Header::deserialize(input);
 
-  for (int i = 0; i < nr_bytes; i++) {
-    const auto byte = input[i];
-    bytes_read++;
+  for (auto &byte : input) {
 
     switch (step) {
-    // Header UC
-    case 0:
-      if (byte != std::byte{'U'}) {
-        error = true;
-        continue;
-      }
-      step++;
-      break;
-    case 1:
-      if (byte != std::byte{'C'}) {
-        error = true;
-        continue;
-      }
-      step++;
-      break;
-
-    // Delimiter
-    case 2:
-      if (byte != DELIMITER) {
-        error = true;
-        continue;
-      }
-      step++;
-      break;
-    // unkown
-    case 3 ... 9:
-      step++;
-      break;
-
     // midi device
     case 10:
-      switch (byte) {
-      case INPUT_DEVICE_ONE_BYTE:
-        tmp_package.midi_dev = 1;
-        break;
-
-      case INPUT_DEVICE_TWO_BYTE:
-        tmp_package.midi_dev = 2;
-        break;
-
-      case INPUT_DEVICE_THREE_BYTE:
-        tmp_package.midi_dev = 3;
-        break;
-
-      default:
-        spdlog::error("Unkown midi device");
-        throw std::runtime_error(
-            "Unkown midi device number while parcing TCP message");
-        break;
-      }
+      package.midi_dev = byte;
       step++;
       break;
 
@@ -94,14 +45,100 @@ std::vector<Package> Parser::serialize(std::byte input[], size_t nr_bytes) {
     // get body
     case 12:
       if (byte != DELIMITER) {
-        tmp_package.body.push_back(byte);
+        package.body.push_back(byte);
         continue;
       }
-      packages.push_back(tmp_package);
+      return package;
       break;
     }
   }
-  return packages;
+  throw std::invalid_argument("Could not deserialize");
+}
+
+std::vector<std::byte> Package::serialize(Package input) {
+  std::vector<std::byte> buffer = Header::serialize(input.header);
+  buffer.push_back(DELIMITER);
+  buffer.push_back(DELIMITER);
+  buffer.push_back(input.midi_dev);
+  buffer.push_back(std::byte(DELIMITER));
+  buffer.insert(buffer.end(), input.body.begin(), input.body.end());
+  buffer.push_back(std::byte(DELIMITER));
+  return buffer;
+}
+
+Header Header::deserialize(std::vector<std::byte> input) {
+  int step = 0;
+  Header header;
+
+  for (auto &byte : input) {
+
+    switch (step) {
+    // Header UC
+    case 0:
+      if (byte != std::byte{'U'}) {
+        throw std::invalid_argument("expected 'U' in step " +
+                                    std::to_string(step) + " but got" +
+                                    (char)byte);
+      }
+      header.firt_part[0] = byte;
+      step++;
+      break;
+    case 1:
+      if (byte != std::byte{'C'}) {
+        throw std::invalid_argument("expected 'C' in step " +
+                                    std::to_string(step) + " but got" +
+                                    (char)byte);
+      }
+      header.firt_part[1] = byte;
+      step++;
+      break;
+
+    // Delimiter
+    case 2:
+    case 5:
+    case 8:
+    case 9:
+      if (byte != DELIMITER) {
+        throw std::invalid_argument("Expected delimiter in step " +
+                                    std::to_string(step));
+      }
+      step++;
+      break;
+
+    // unkown pt2
+    case 3:
+      header.second_part[0] = byte;
+      step++;
+      break;
+    case 4:
+      header.second_part[1] = byte;
+      step++;
+      break;
+
+    // unkown pt3
+    case 6:
+      header.third_part[0] = byte;
+      step++;
+      break;
+    case 7:
+      header.third_part[1] = byte;
+      step++;
+      break;
+    }
+  }
+  return header;
+}
+
+std::vector<std::byte> Header::serialize(Header input) {
+  std::vector<std::byte> buffer;
+  buffer.insert(buffer.end(), input.firt_part, input.firt_part + 2);
+  buffer.push_back(DELIMITER);
+  buffer.insert(buffer.end(), input.second_part, input.second_part + 2);
+  buffer.push_back(DELIMITER);
+  buffer.insert(buffer.end(), input.third_part, input.third_part + 2);
+  buffer.push_back(DELIMITER);
+  buffer.push_back(DELIMITER);
+  return buffer;
 }
 
 } // namespace sls3mcubridge

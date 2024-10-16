@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include "client.hpp"
+#include "parser.hpp"
 
 namespace sls3mcubridge {
 void Client::connect(std::string const &host, int const &port) {
@@ -29,7 +30,8 @@ void Client::read_handler(const boost::system::error_code &error,
   if (error.value() == boost::system::errc::success) {
     spdlog::info("handle message");
     try {
-      parser.serialize(buffer, bytes_transferred);
+      sls3mcubridge::Package::deserialize(
+          std::vector<std::byte>(buffer, buffer + bytes_transferred));
     } catch (...) {
       // ignore error and move on to next message.
       spdlog::warn("ignore parse failure.");

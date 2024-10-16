@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <cstddef>
 #include <vector>
 
 namespace sls3mcubridge {
@@ -10,15 +10,26 @@ struct midi_message {
   std::vector<std::byte> message;
 };
 
+struct Header {
+  static Header deserialize(std::vector<std::byte> input);
+  static std::vector<std::byte> serialize(Header input);
+
+  std::byte firt_part[2];
+  std::byte second_part[2];
+  std::byte third_part[2];
+};
+
 struct Package {
-  std::byte header;
-  uint8_t midi_dev;
+  static Package deserialize(std::vector<std::byte> input);
+  static std::vector<std::byte> serialize(Package input);
+
+  Header header;
+  std::byte midi_dev;
   std::vector<std::byte> body;
 };
 
 class Parser {
 public:
   Parser() {}
-  std::vector<Package> serialize(std::byte input[], size_t nr_bytes);
 };
 } // namespace sls3mcubridge
