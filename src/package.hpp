@@ -29,9 +29,4 @@ struct Package {
   Header header;
   std::vector<std::byte> body;
 };
-
-class Parser {
-public:
-  Parser() {}
-};
 } // namespace sls3mcubridge

@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 
 #include "client.hpp"
-#include "parser.hpp"
+#include "package.hpp"
 
 namespace sls3mcubridge {
 void Client::connect(std::string const &host, int const &port) {

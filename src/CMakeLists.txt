@@ -1,4 +1,4 @@
-add_library(sls3_mcu_bridge_lib parser.cpp parser.hpp client.cpp client.hpp)
+add_library(sls3_mcu_bridge_lib package.cpp package.hpp client.cpp client.hpp)
 target_link_libraries(sls3_mcu_bridge_lib PRIVATE fmt)
 
 add_executable(sls3_mcu_bridge)
