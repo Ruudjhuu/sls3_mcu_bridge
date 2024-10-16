@@ -11,7 +11,8 @@ struct midi_message {
 };
 
 struct Header {
-  static Header deserialize(std::vector<std::byte> input);
+  static Header deserialize(std::vector<std::byte> input,
+                            std::vector<std::byte>::iterator &position);
   static std::vector<std::byte> serialize(Header input);
 
   std::byte firt_part[2];
@@ -20,7 +21,8 @@ struct Header {
 };
 
 struct Package {
-  static Package deserialize(std::vector<std::byte> input);
+  static Package deserialize(std::vector<std::byte> input,
+                             std::vector<std::byte>::iterator &position);
   static std::vector<std::byte> serialize(Package input);
 
   Header header;

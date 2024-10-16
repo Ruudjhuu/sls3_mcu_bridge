@@ -30,8 +30,10 @@ void Client::read_handler(const boost::system::error_code &error,
   if (error.value() == boost::system::errc::success) {
     spdlog::info("handle message");
     try {
-      sls3mcubridge::Package::deserialize(
-          std::vector<std::byte>(buffer, buffer + bytes_transferred));
+      auto buff_vec =
+          std::vector<std::byte>(buffer, buffer + bytes_transferred);
+      auto position = buff_vec.begin();
+      sls3mcubridge::Package::deserialize(buff_vec, position);
     } catch (...) {
       // ignore error and move on to next message.
       spdlog::warn("ignore parse failure.");

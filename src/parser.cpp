@@ -18,24 +18,25 @@ const std::byte DELIMITER = std::byte(0x0);
 const int TCP_MIDI_HEADER_SIZE = 12;
 const int TCP_MIN_MESSAGE_SIZE = 14;
 
-Package Package::deserialize(std::vector<std::byte> input) {
+Package Package::deserialize(std::vector<std::byte> input,
+                             std::vector<std::byte>::iterator &position) {
   int step = 0;
   bool error = false;
 
   Package package;
-  package.header = Header::deserialize(input);
+  package.header = Header::deserialize(input, position);
 
-  for (auto &byte : input) {
-
+  for (auto it = position; position != input.end(); it++) {
     switch (step) {
     // midi device
-    case 10:
-      package.midi_dev = byte;
+    case 0:
+      package.midi_dev = *it;
       step++;
       break;
 
-    case 11:
-      if (byte != DELIMITER) {
+    // delimiter
+    case 1:
+      if (*it != DELIMITER) {
         error = true;
         continue;
       }
@@ -43,11 +44,12 @@ Package Package::deserialize(std::vector<std::byte> input) {
       break;
 
     // get body
-    case 12:
-      if (byte != DELIMITER) {
-        package.body.push_back(byte);
+    case 2:
+      if (*it != DELIMITER) {
+        package.body.push_back(*it);
         continue;
       }
+      position = it + 1;
       return package;
       break;
     }
@@ -57,8 +59,6 @@ Package Package::deserialize(std::vector<std::byte> input) {
 
 std::vector<std::byte> Package::serialize(Package input) {
   std::vector<std::byte> buffer = Header::serialize(input.header);
-  buffer.push_back(DELIMITER);
-  buffer.push_back(DELIMITER);
   buffer.push_back(input.midi_dev);
   buffer.push_back(std::byte(DELIMITER));
   buffer.insert(buffer.end(), input.body.begin(), input.body.end());
@@ -66,30 +66,32 @@ std::vector<std::byte> Package::serialize(Package input) {
   return buffer;
 }
 
-Header Header::deserialize(std::vector<std::byte> input) {
+Header Header::deserialize(std::vector<std::byte> input,
+                           std::vector<std::byte>::iterator &position) {
+  bool break_loop = false;
   int step = 0;
   Header header;
 
-  for (auto &byte : input) {
+  for (auto it = position; position != input.end(); it++) {
 
     switch (step) {
     // Header UC
     case 0:
-      if (byte != std::byte{'U'}) {
+      if (*it != std::byte{'U'}) {
         throw std::invalid_argument("expected 'U' in step " +
                                     std::to_string(step) + " but got" +
-                                    (char)byte);
+                                    (char)*it);
       }
-      header.firt_part[0] = byte;
+      header.firt_part[0] = *it;
       step++;
       break;
     case 1:
-      if (byte != std::byte{'C'}) {
+      if (*it != std::byte{'C'}) {
         throw std::invalid_argument("expected 'C' in step " +
                                     std::to_string(step) + " but got" +
-                                    (char)byte);
+                                    (char)*it);
       }
-      header.firt_part[1] = byte;
+      header.firt_part[1] = *it;
       step++;
       break;
 
@@ -98,7 +100,7 @@ Header Header::deserialize(std::vector<std::byte> input) {
     case 5:
     case 8:
     case 9:
-      if (byte != DELIMITER) {
+      if (*it != DELIMITER) {
         throw std::invalid_argument("Expected delimiter in step " +
                                     std::to_string(step));
       }
@@ -107,22 +109,30 @@ Header Header::deserialize(std::vector<std::byte> input) {
 
     // unkown pt2
     case 3:
-      header.second_part[0] = byte;
+      header.second_part[0] = *it;
       step++;
       break;
     case 4:
-      header.second_part[1] = byte;
+      header.second_part[1] = *it;
       step++;
       break;
 
     // unkown pt3
     case 6:
-      header.third_part[0] = byte;
+      header.third_part[0] = *it;
       step++;
       break;
     case 7:
-      header.third_part[1] = byte;
+      header.third_part[1] = *it;
       step++;
+      break;
+    case 10:
+      break_loop = true;
+      break;
+    }
+
+    if (break_loop) {
+      position = it;
       break;
     }
   }
