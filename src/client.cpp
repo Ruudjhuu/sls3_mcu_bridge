@@ -1,6 +1,6 @@
 #include <boost/asio/connect.hpp>
 #include <cstddef>
-#include <iostream>
+#include <functional>
 #include <spdlog/spdlog.h>
 
 #include "client.hpp"
@@ -18,7 +18,8 @@ void Client::write(std::vector<std::byte> &message) {
   socket.send(boost::asio::buffer(message));
 }
 
-void Client::start_reading() {
+void Client::start_reading(std::function<void(Package)> callback) {
+  read_callback = callback;
   socket.async_read_some(
       boost::asio::buffer(buffer),
       std::bind(&Client::read_handler, shared_from_this(),
@@ -36,12 +37,7 @@ void Client::read_handler(const boost::system::error_code &error,
       auto position = buff_vec.begin();
       while (position != buff_vec.end()) {
         auto package = sls3mcubridge::Package::deserialize(buff_vec, position);
-
-        std::cout << package.body.type << ":";
-        for (auto &it : package.body.midi_content.message) {
-          std::cout << std::to_integer<int>(it) << ",";
-        }
-        std::cout << std::endl;
+        read_callback(package);
       }
     } catch (...) {
       // ignore error and move on to next message.
@@ -50,6 +46,6 @@ void Client::read_handler(const boost::system::error_code &error,
   } else {
     spdlog::error("failed to read incomming TCP message");
   }
-  start_reading();
+  start_reading(read_callback);
 }
 } // namespace sls3mcubridge
