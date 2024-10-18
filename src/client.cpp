@@ -1,17 +1,22 @@
 #include <boost/asio/connect.hpp>
 #include <cstddef>
+#include <exception>
+#include <format>
 #include <functional>
 #include <spdlog/spdlog.h>
+#include <string>
 
 #include "client.hpp"
-#include "new_package.hpp"
+#include "package.hpp"
 
 namespace sls3mcubridge {
 void Client::connect(std::string const &host, int const &port) {
+  spdlog::info("Connecting to " + host + ":" + std::to_string(port));
   boost::asio::ip::tcp::resolver resolver(io_context);
   boost::asio::ip::tcp::resolver::iterator endpoint = resolver.resolve(
       boost::asio::ip::tcp::resolver::query(host, std::to_string(port)));
   boost::asio::connect(this->socket, endpoint);
+  spdlog::info("Connected succesfully");
 }
 
 void Client::write(std::vector<std::byte> &message) {
@@ -37,9 +42,8 @@ void Client::read_handler(const boost::system::error_code &error,
         auto package = Package(buffer, bytes_read);
         read_callback(package);
       }
-    } catch (...) {
-      // ignore error and move on to next message.
-      spdlog::warn("ignore parse failure.");
+    } catch (const std::exception &exc) {
+      spdlog::warn(std::format("TCP read parse failure: {}", exc.what()));
     }
   } else {
     spdlog::error("failed to read incomming TCP message");

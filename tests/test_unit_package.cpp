@@ -1,122 +1,69 @@
-#include "package.hpp"
+
 #include "gtest/gtest.h"
 #include <cstddef>
-#include <vector>
 
-TEST(TestPackageSerialization, test_package_serialization) {
-  std::vector<std::byte> input = {
-      std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
-      std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
-      std::byte(0x00), std::byte(0x00), std::byte(0x6c), std::byte(0x00),
-      std::byte(0x90), std::byte(0x10), std::byte(0x7f), std::byte(0x00),
-  };
+#include "package.hpp"
 
-  auto position = input.begin();
-  auto output = sls3mcubridge::Package::deserialize(input, position);
-  ASSERT_EQ(input, sls3mcubridge::Package::serialize(output));
-  ASSERT_EQ(input.end(), position);
+namespace sls3mcubridge {
+
+TEST(TestBodySerialization, test_midibody_serialization) {
+  const size_t size = 10;
+  std::byte input[size] = {std::byte(0x4d), std::byte(0x4d), std::byte(0x00),
+                           std::byte(0x00), std::byte(0x6c), std::byte(0x00),
+                           std::byte(0x90), std::byte(0x10), std::byte(0x7f),
+                           std::byte(0x00)};
+  int read_bytes = 0;
+
+  auto body = Body::create(input, size, read_bytes);
+
+  ASSERT_EQ(body->get_type(), Body::Type::Midi);
+  ASSERT_EQ(std::vector<std::byte>(input, input + size), body->serialize());
+  ASSERT_EQ(read_bytes, size);
 }
 
-TEST(TestPackageSerialization,
-     test_package_serialization_start_at_different_position) {
-  std::vector<std::byte> input = {
-      std::byte(0x00), std::byte(0x00), std::byte('U'),  std::byte('C'),
-      std::byte(0x00), std::byte(0x01), std::byte(0x0a), std::byte(0x00),
-      std::byte(0x4d), std::byte(0x4d), std::byte(0x00), std::byte(0x00),
-      std::byte(0x6c), std::byte(0x00), std::byte(0x90), std::byte(0x10),
-      std::byte(0x7f), std::byte(0x00),
-  };
+TEST(TestBodySerialization, test_unkownbody_serialization) {
+  const size_t size = 10;
+  std::byte input[size] = {std::byte(0x3d), std::byte(0x4d), std::byte(0x00),
+                           std::byte(0x00), std::byte(0x6c), std::byte(0x00),
+                           std::byte(0x90), std::byte(0x10), std::byte(0x7f),
+                           std::byte(0x00)};
+  int read_bytes = 0;
 
-  std::vector<std::byte> expected(input.begin() + 2, input.end());
+  auto body = Body::create(input, size, read_bytes);
 
-  auto position = input.begin() + 2;
-  auto output = sls3mcubridge::Package::deserialize(input, position);
-  ASSERT_EQ(expected, sls3mcubridge::Package::serialize(output));
-  ASSERT_EQ(input.end(), position);
-}
+  // unkown body type is set to 0
+  input[0] = std::byte(0);
+  input[1] = std::byte(0);
 
-TEST(TestPackageSerialization,
-     test_package_serialization_2_packages_in_one_buffer) {
-  std::vector<std::byte> pkg1 = {
-      std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
-      std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
-      std::byte(0x00), std::byte(0x00), std::byte(0x6c), std::byte(0x00),
-      std::byte(0x90), std::byte(0x10), std::byte(0x7f), std::byte(0x00),
-  };
-  std::vector<std::byte> pkg2 = {
-      std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x02),
-      std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
-      std::byte(0x00), std::byte(0x00), std::byte(0x6c), std::byte(0x00),
-      std::byte(0x91), std::byte(0x11), std::byte(0x7c), std::byte(0x00),
-  };
-
-  auto input = pkg1;
-  input.insert(input.end(), pkg2.begin(), pkg2.end());
-  auto position = input.begin();
-
-  auto output1 = sls3mcubridge::Package::deserialize(input, position);
-  ASSERT_EQ(input.begin() + pkg1.size(), position);
-  auto output2 = sls3mcubridge::Package::deserialize(input, position);
-
-  ASSERT_EQ(pkg1, sls3mcubridge::Package::serialize(output1));
-  ASSERT_EQ(pkg2, sls3mcubridge::Package::serialize(output2));
-  ASSERT_EQ(input.end(), position);
-}
-
-TEST(TestBodySerialization, test_body_serialization) {
-  std::vector<std::byte> input = {
-      std::byte(0x4d), std::byte(0x4d), std::byte(0x00), std::byte(0x00),
-      std::byte(0x6c), std::byte(0x00), std::byte(0x90), std::byte(0x10),
-      std::byte(0x7f), std::byte(0x00)};
-  auto position = input.begin();
-  auto output = sls3mcubridge::Body::deserialize(input);
-  ASSERT_EQ(input, sls3mcubridge::Body::serialize(output));
-}
-
-TEST(TestMidiSerialization, test_midi_serialization) {
-  std::vector<std::byte> input = {std::byte(0x6c), std::byte(0x00),
-                                  std::byte(0x90), std::byte(0x10),
-                                  std::byte(0x7f), std::byte(0x00)};
-  auto position = input.begin();
-  auto output = sls3mcubridge::MidiContent::deserialize(input);
-  ASSERT_EQ(input, sls3mcubridge::MidiContent::serialize(output));
+  ASSERT_EQ(body->get_type(), Body::Type::Unkown);
+  ASSERT_EQ(std::vector<std::byte>(input, input + size), body->serialize());
+  ASSERT_EQ(read_bytes, size);
 }
 
 TEST(TestHeaderSerialization, test_header_serialization) {
-  std::vector<std::byte> input = {std::byte('U'),  std::byte('C'),
-                                  std::byte(0x00), std::byte(0x01),
-                                  std::byte(0x0a), std::byte(0x00)};
+  const size_t size = 6;
+  std::byte input[size] = {std::byte('U'),  std::byte('C'),  std::byte(0x00),
+                           std::byte(0x01), std::byte(0x0a), std::byte(0x00)};
 
-  auto position = input.begin();
-  auto output = sls3mcubridge::Header::deserialize(input, position);
-  ASSERT_EQ(input, sls3mcubridge::Header::serialize(output));
-  ASSERT_EQ(position, input.end());
+  int read_bytes = 0;
+  auto output = Header(input, read_bytes);
+
+  ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
+  ASSERT_EQ(read_bytes, size);
 }
 
-TEST(TestHeaderSerialization,
-     test_header_serialization_start_at_different_position) {
-  std::vector<std::byte> input = {
-      std::byte(0x00), std::byte(0x00), std::byte('U'),  std::byte('C'),
-      std::byte(0x00), std::byte(0x01), std::byte(0x0a), std::byte(0x00)};
-
-  std::vector<std::byte> expectation(input.begin() + 2, input.end());
-
-  auto position = input.begin() + 2;
-  auto output = sls3mcubridge::Header::deserialize(input, position);
-  ASSERT_EQ(expectation, sls3mcubridge::Header::serialize(output));
-  ASSERT_EQ(position, input.end());
-}
-
-TEST(TestHeaderSerialization, test_header_serialization_longer_input) {
-  std::vector<std::byte> input = {
+TEST(TestPackageSerialization, test_package_serialization) {
+  const size_t size = 16;
+  std::byte input[size] = {
       std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
-      std::byte(0x0a), std::byte(0x00), std::byte(0x00), std::byte(0x00),
+      std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
+      std::byte(0x00), std::byte(0x00), std::byte(0x6c), std::byte(0x00),
+      std::byte(0x90), std::byte(0x10), std::byte(0x7f), std::byte(0x00),
   };
 
-  std::vector<std::byte> expectation(input.begin(), input.end() - 2);
-
-  auto position = input.begin();
-  auto output = sls3mcubridge::Header::deserialize(input, position);
-  ASSERT_EQ(expectation, sls3mcubridge::Header::serialize(output));
-  ASSERT_EQ(position, input.end() - 2);
+  int bytes_read = 0;
+  auto output = Package(input, bytes_read);
+  ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
+  ASSERT_EQ(bytes_read, size);
 }
+} // namespace sls3mcubridge

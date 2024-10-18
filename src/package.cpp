@@ -1,191 +1,203 @@
 #include "package.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
-#include <string>
 #include <vector>
 
 namespace sls3mcubridge {
 
 const std::byte DELIMITER = std::byte(0x0);
 
-Package Package::deserialize(std::vector<std::byte> input,
-                             std::vector<std::byte>::iterator &position) {
-  int step = 0;
-  bool error = false;
-
-  Package package;
-  package.header = Header::deserialize(input, position);
-  package.body = Body::deserialize(
-      std::vector<std::byte>(position, position + package.header.body_size));
-  position += package.header.body_size;
-  return package;
-}
-
-std::vector<std::byte> Package::serialize(Package input) {
-  std::vector<std::byte> buffer = Header::serialize(input.header);
-  auto body_buffer = Body::serialize(input.body);
-  buffer.insert(buffer.end(), body_buffer.begin(), body_buffer.end());
-  return buffer;
-}
-
-Body Body::deserialize(std::vector<std::byte> input) {
-  int step = 0;
-  Body body;
-  std::vector<std::byte> content_buffer;
-  for (auto &it : input) {
-    switch (step) {
-    case 0:
-      body.type = uint16_t(it) << 8;
-      step++;
-      break;
-    case 1:
-      body.type |= uint16_t(it) << 0;
-      step++;
-      break;
-    case 2:
-    case 3:
-      if (it != DELIMITER) {
-        throw std::invalid_argument("Expected delimiter at step " +
-                                    std::to_string(step));
-      }
-      step++;
-      break;
-    case 4:
-      // incomming midi
-      if (body.type == 19789) {
-        content_buffer.push_back(it);
-      } else {
-        throw std::invalid_argument("Unkown body type");
-      }
-      break;
-    }
-  }
-  body.midi_content = MidiContent::deserialize(content_buffer);
-  return body;
-}
-
-std::vector<std::byte> Body::serialize(Body input) {
-  std::vector<std::byte> buffer;
-  buffer.push_back(std::byte(input.type >> 8));
-  buffer.push_back(std::byte(input.type >> 0));
-  buffer.push_back(DELIMITER);
-  buffer.push_back(DELIMITER);
-  auto tmp = MidiContent::serialize(input.midi_content);
-  buffer.insert(buffer.end(), tmp.begin(), tmp.end());
-  return buffer;
-}
-
-MidiContent MidiContent::deserialize(std::vector<std::byte> input) {
-  int step = 0;
-  auto content = MidiContent();
-  for (auto it = input.begin(); it != input.end(); it++) {
-    switch (step) {
-    case 0:
-      content.device = *it;
-      step++;
-      break;
-    case 1:
-      if (*it != DELIMITER) {
-        throw std::invalid_argument("Delimiter expected");
-      }
-      step++;
-      break;
-    case 2:
-      if (it + 1 == input.end()) {
-        break;
-      }
-      content.message.push_back(*it);
-      break;
-    }
-  }
-  return content;
-}
-
-std::vector<std::byte> MidiContent::serialize(MidiContent input) {
-  auto tmp = std::vector<std::byte>();
-  tmp.push_back(input.device);
-  tmp.push_back(DELIMITER);
-  tmp.insert(tmp.end(), input.message.begin(), input.message.end());
-  tmp.push_back(DELIMITER);
-  return tmp;
-}
-
-Header Header::deserialize(std::vector<std::byte> input,
-                           std::vector<std::byte>::iterator &position) {
+Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
   bool break_loop = false;
   int step = 0;
-  Header header;
-
-  for (; position != input.end(); position++) {
+  std::byte *current_byte = buffer;
+  for (int i = 0; i < HEADER_SIZE; i++) {
 
     switch (step) {
     // Header UC
     case 0:
-      if (*position != std::byte{'U'}) {
-        throw std::invalid_argument("expected 'U' in step " +
-                                    std::to_string(step) + " but got" +
-                                    (char)*position);
+      if (*current_byte != FIRST_BYTE) {
+        throw std::invalid_argument("expected first byte to be 'U'");
       }
-      header.firt_part[0] = *position;
       step++;
       break;
     case 1:
-      if (*position != std::byte{'C'}) {
-        throw std::invalid_argument("expected 'C' in step " +
-                                    std::to_string(step) + " but got" +
-                                    (char)*position);
+      if (*current_byte != SECOND_BYTE) {
+        throw std::invalid_argument("expected first byte to be 'C'");
       }
-      header.firt_part[1] = *position;
       step++;
       break;
 
     // Delimiter
     case 2:
-      if (*position != DELIMITER) {
+    case 5:
+      if (*current_byte != DELIMITER) {
         throw std::invalid_argument("Expected delimiter in step " +
                                     std::to_string(step));
       }
       step++;
       break;
 
-    // unkown pt2
+    // unkown
     case 3:
-      header.second_part = *position;
+      m_unkown_byte = *current_byte;
       step++;
       break;
 
     // body size
     case 4:
-      header.body_size = std::to_integer<uint8_t>(*position);
-      step++;
-      break;
-
-    case 5:
-      if (*position != DELIMITER) {
-        throw std::invalid_argument("Expected delimiter in step " +
-                                    std::to_string(step));
-      }
-      break_loop = true;
+      m_body_size = std::to_integer<size_t>(*current_byte);
       step++;
       break;
     }
-    if (break_loop) {
-      position++;
-      break;
-    }
+    bytes_read++;
+    current_byte++;
   }
-  return header;
 }
 
-std::vector<std::byte> Header::serialize(Header input) {
+std::vector<std::byte> Header::serialize() {
   std::vector<std::byte> buffer;
-  buffer.insert(buffer.end(), input.firt_part, input.firt_part + 2);
+  buffer.push_back(FIRST_BYTE);
+  buffer.push_back(SECOND_BYTE);
   buffer.push_back(DELIMITER);
-  buffer.push_back(input.second_part);
-  buffer.push_back(std::byte(input.body_size));
+  buffer.push_back(m_unkown_byte);
+  buffer.push_back(std::byte(m_body_size));
   buffer.push_back(DELIMITER);
   return buffer;
 }
 
+std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
+                                   int &bytes_read) {
+  int step = 0;
+  int type_int = 0;
+  std::byte *byte = buffer;
+  for (int i = 0; i < BODY_HEADER_SIZE; i++) {
+    switch (step) {
+    case 0:
+      type_int = uint16_t(*byte) << 8;
+      step++;
+      break;
+    case 1:
+      type_int |= uint16_t(*byte) << 0;
+      step++;
+      break;
+    case 2:
+    case 3:
+      if (*byte != DELIMITER) {
+        throw std::invalid_argument("Expected delimiter at step " +
+                                    std::to_string(step));
+      }
+      step++;
+      break;
+    }
+    byte++;
+    bytes_read++;
+  }
+
+  Type type = Type::Unkown;
+  try {
+    type = int16_to_type_map.at(type_int);
+  } catch (std::out_of_range) {
+    type = Type::Unkown;
+  }
+
+  size_t sub_body_size = body_size - BODY_HEADER_SIZE;
+
+  switch (type) {
+  case Type::Midi:
+    return std::make_shared<MidiBody>(byte, sub_body_size, bytes_read);
+  case Type::Unkown:
+    return std::make_shared<UnkownBody>(byte, sub_body_size, bytes_read);
+  }
+}
+
+std::vector<std::byte> Body::serialize() {
+  std::vector<std::byte> tmp;
+  uint16_t type_int = find_type_in_map(m_type);
+  tmp.push_back(std::byte(type_int >> 8));
+  tmp.push_back(std::byte(type_int >> 0));
+  tmp.push_back(DELIMITER);
+  tmp.push_back(DELIMITER);
+  return tmp;
+}
+
+uint16_t Body::find_type_in_map(Type type) {
+  for (auto &it : int16_to_type_map) {
+    if (it.second == type) {
+      return it.first;
+    }
+  }
+  // not found
+  return 0;
+}
+
+MidiBody::MidiBody(std::byte buffer[], size_t size, int &bytes_read)
+    : Body(Body::Type::Midi, size) {
+  int step = 0;
+  std::byte *current_byte = buffer;
+  for (int i = 0; i < size; i++) {
+    switch (step) {
+    case 0:
+      m_device = *current_byte;
+      step++;
+      break;
+    case 1:
+    case 3:
+      if (*current_byte != DELIMITER) {
+        throw std::invalid_argument("Delimiter expected");
+      }
+      step++;
+      break;
+    case 2:
+      if (i == size - 1) {
+        break;
+      }
+      m_message.push_back(*current_byte);
+      break;
+    }
+    bytes_read++;
+    current_byte++;
+  }
+}
+
+std::vector<std::byte> MidiBody::serialize() {
+  auto tmp = std::vector<std::byte>();
+  auto body_header = Body::serialize();
+  tmp.insert(tmp.end(), body_header.begin(), body_header.end());
+  tmp.push_back(m_device);
+  tmp.push_back(DELIMITER);
+  tmp.insert(tmp.end(), m_message.begin(), m_message.end());
+  tmp.push_back(DELIMITER);
+  return tmp;
+}
+
+Package::Package(std::byte buffer[], int &bytes_read)
+    : m_header(buffer, bytes_read),
+      m_body(Body::create(buffer + bytes_read, m_header.get_body_size(),
+                          bytes_read)) {}
+
+std::vector<std::byte> Package::serialize() {
+  std::vector<std::byte> tmp = m_header.serialize();
+  auto body_vec = m_body->serialize();
+  tmp.insert(tmp.end(), body_vec.begin(), body_vec.end());
+  return tmp;
+}
+
+UnkownBody::UnkownBody(std::byte buffer[], size_t size, int &bytes_read)
+    : Body(Body::Type::Unkown, size) {
+  for (int i = 0; i < size; i++) {
+    m_content.push_back(buffer[i]);
+    bytes_read++;
+  }
+}
+
+std::vector<std::byte> UnkownBody::serialize() {
+  auto body_header = Body::serialize();
+  std::vector<std::byte> tmp;
+  tmp.insert(tmp.end(), body_header.begin(), body_header.end());
+  tmp.insert(tmp.end(), m_content.begin(), m_content.end());
+  return tmp;
+}
 } // namespace sls3mcubridge
