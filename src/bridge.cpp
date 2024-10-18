@@ -5,7 +5,9 @@
 #include <vector>
 
 #include "client.hpp"
+#include "new_package.hpp"
 #include "rtmidi/RtMidi.h"
+#include "spdlog/spdlog.h"
 
 namespace sls3mcubridge {
 Bridge::Bridge(boost::asio::io_context &io_context, std::string ip, int port)
@@ -51,15 +53,24 @@ void Bridge::send_init_messages() {
   tcp_client->write(data);
 }
 
-void Bridge::handle_read(Package package) {
+void Bridge::handle_read(Package &package) {
   std::cout << "Bridge handle read" << std::endl;
-  auto message = package.body.midi_content.message;
-  std::vector<unsigned char> char_mesage;
-  for (auto &it : message) {
-    char_mesage.push_back((unsigned char)it);
-  }
+  switch (package.get_body()->get_type()) {
+  case Body::Type::Midi: {
+    auto midi_body = std::dynamic_pointer_cast<MidiBody>(package.get_body());
+    auto message = std::dynamic_pointer_cast<MidiBody>(package.get_body());
+    std::vector<unsigned char> char_mesage;
+    for (auto &it : midi_body->get_message()) {
+      char_mesage.push_back((unsigned char)it);
+    }
 
-  midi_main.sendMessage(&char_mesage);
+    midi_main.sendMessage(&char_mesage);
+    break;
+  }
+  case Body::Type::Unkown: {
+    spdlog::warn("Recieved unkown package, ignoring it");
+  }
+  }
 }
 
 } // namespace sls3mcubridge

@@ -4,6 +4,8 @@
 
 #include "new_package.hpp"
 
+namespace sls3mcubridge {
+
 TEST(TestBodySerialization, test_midibody_serialization) {
   const size_t size = 10;
   std::byte input[size] = {std::byte(0x4d), std::byte(0x4d), std::byte(0x00),
@@ -64,3 +66,4 @@ TEST(TestPackageSerialization, test_package_serialization) {
   ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
   ASSERT_EQ(bytes_read, size);
 }
+} // namespace sls3mcubridge

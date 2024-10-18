@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 
 #include "client.hpp"
-#include "package.hpp"
+#include "new_package.hpp"
 
 namespace sls3mcubridge {
 void Client::connect(std::string const &host, int const &port) {
@@ -18,7 +18,7 @@ void Client::write(std::vector<std::byte> &message) {
   socket.send(boost::asio::buffer(message));
 }
 
-void Client::start_reading(std::function<void(Package)> callback) {
+void Client::start_reading(std::function<void(Package &)> callback) {
   read_callback = callback;
   socket.async_read_some(
       boost::asio::buffer(buffer),
@@ -32,11 +32,9 @@ void Client::read_handler(const boost::system::error_code &error,
   if (error.value() == boost::system::errc::success) {
     spdlog::info("handle message");
     try {
-      auto buff_vec =
-          std::vector<std::byte>(buffer, buffer + bytes_transferred);
-      auto position = buff_vec.begin();
-      while (position != buff_vec.end()) {
-        auto package = sls3mcubridge::Package::deserialize(buff_vec, position);
+      int bytes_read = 0;
+      while (bytes_read < bytes_transferred) {
+        auto package = Package(buffer, bytes_read);
         read_callback(package);
       }
     } catch (...) {

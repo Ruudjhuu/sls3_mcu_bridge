@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+namespace sls3mcubridge {
 class ISerialize {
 public:
   virtual std::vector<std::byte> serialize() = 0;
@@ -57,6 +58,8 @@ class MidiBody : public Body {
 public:
   MidiBody(std::byte buffer[], size_t size, int &bytes_read);
   std::vector<std::byte> serialize();
+  int get_device_index();
+  std::vector<std::byte> &get_message() { return m_message; }
 
 private:
   std::byte m_device;
@@ -77,8 +80,10 @@ class Package : ISerialize {
 public:
   Package(std::byte buffer[], int &bytes_read);
   std::vector<std::byte> serialize();
+  std::shared_ptr<Body> get_body() { return m_body; }
 
 private:
   Header m_header;
   std::shared_ptr<Body> m_body;
 };
+} // namespace sls3mcubridge

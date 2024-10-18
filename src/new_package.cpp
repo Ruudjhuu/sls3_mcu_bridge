@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <vector>
 
+namespace sls3mcubridge {
+
 const std::byte DELIMITER = std::byte(0x0);
 
 Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
@@ -198,3 +200,4 @@ std::vector<std::byte> UnkownBody::serialize() {
   tmp.insert(tmp.end(), m_content.begin(), m_content.end());
   return tmp;
 }
+} // namespace sls3mcubridge

@@ -13,7 +13,7 @@ public:
 
 private:
   void send_init_messages();
-  void handle_read(Package package);
+  void handle_read(Package &package);
   std::shared_ptr<Client> tcp_client;
   RtMidiOut midi_main;
 };
