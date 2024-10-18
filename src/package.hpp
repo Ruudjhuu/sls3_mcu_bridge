@@ -6,11 +6,6 @@
 
 namespace sls3mcubridge {
 
-struct midi_message {
-  int device_number;
-  std::vector<std::byte> message;
-};
-
 struct Header {
   static Header deserialize(std::vector<std::byte> input,
                             std::vector<std::byte>::iterator &position);

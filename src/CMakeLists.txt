@@ -1,4 +1,9 @@
-add_library(sls3_mcu_bridge_lib package.cpp package.hpp client.cpp client.hpp bridge.cpp bridge.hpp)
+add_library(sls3_mcu_bridge_lib 
+ package.cpp package.hpp
+ client.cpp client.hpp
+ bridge.cpp bridge.hpp
+ new_package.cpp new_package.hpp)
+ 
 target_link_libraries(sls3_mcu_bridge_lib PRIVATE fmt)
 
 add_executable(sls3_mcu_bridge)
