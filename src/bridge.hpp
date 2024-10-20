@@ -1,11 +1,14 @@
 #pragma once
 
 #include "client.hpp"
+#include "mididevice.hpp"
 #include <boost/asio/io_context.hpp>
 #include <memory>
 #include <rtmidi/RtMidi.h>
+#include <vector>
 
 namespace sls3mcubridge {
+
 class Bridge : public std::enable_shared_from_this<Bridge> {
 public:
   Bridge(boost::asio::io_context &io_context, std::string ip, int port);
@@ -13,8 +16,11 @@ public:
 
 private:
   void send_init_messages();
-  void handle_read(Package &package);
+  void handle_tcp_read(Package &package);
+  void handle_midi_read(int device_index, std::vector<std::byte> message);
+  boost::asio::io_context &io_context;
   std::shared_ptr<Client> tcp_client;
-  RtMidiOut midi_main;
-};
+  std::vector<std::shared_ptr<MidiDevice>> midi_devices;
+}; // namespace sls3mcubridge
+
 } // namespace sls3mcubridge

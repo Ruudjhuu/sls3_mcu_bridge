@@ -173,6 +173,19 @@ std::vector<std::byte> MidiBody::serialize() {
   return tmp;
 }
 
+int MidiBody::get_device_index() {
+  switch (m_device) {
+  case std::byte(0x6c):
+    return 0;
+  case std::byte(0x6d):
+    return 1;
+  case std::byte(0x6e):
+    return 2;
+  default:
+    throw std::invalid_argument("Could not determine midi device index");
+  }
+}
+
 Package::Package(std::byte buffer[], int &bytes_read)
     : m_header(buffer, bytes_read),
       m_body(Body::create(buffer + bytes_read, m_header.get_body_size(),

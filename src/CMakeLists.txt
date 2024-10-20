@@ -1,7 +1,8 @@
 add_library(sls3_mcu_bridge_lib 
  package.cpp package.hpp
  client.cpp client.hpp
- bridge.cpp bridge.hpp)
+ bridge.cpp bridge.hpp
+ mididevice.cpp mididevice.hpp)
  
 target_link_libraries(sls3_mcu_bridge_lib PRIVATE fmt)
 

@@ -1,7 +1,9 @@
 #include "bridge.hpp"
-#include <boost/asio/io_context.hpp>
+#include <boost/asio.hpp>
+#include <functional>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "client.hpp"
@@ -10,18 +12,23 @@
 #include "spdlog/spdlog.h"
 
 namespace sls3mcubridge {
+
 Bridge::Bridge(boost::asio::io_context &io_context, std::string ip, int port)
-    : tcp_client(std::make_shared<Client>(io_context)),
-      midi_main(RtMidi::Api::LINUX_ALSA, "MAIN") {
+    : io_context(io_context), tcp_client(std::make_shared<Client>(io_context)) {
   tcp_client->connect(ip, port);
   send_init_messages();
 
-  midi_main.openVirtualPort("MAIN");
+  midi_devices.push_back(
+      std::make_shared<MidiDevice>("MAIN", RtMidi::Api::LINUX_ALSA));
 }
 
 void Bridge::start() {
-  tcp_client->start_reading(std::bind(&Bridge::handle_read, shared_from_this(),
-                                      std::placeholders::_1));
+  tcp_client->start_reading(std::bind(
+      &Bridge::handle_tcp_read, shared_from_this(), std::placeholders::_1));
+
+  for (auto &it : midi_devices)
+    it->start_reading(std::bind(&Bridge::handle_midi_read, shared_from_this(),
+                                0, std::placeholders::_2));
 }
 
 void Bridge::send_init_messages() {
@@ -53,24 +60,24 @@ void Bridge::send_init_messages() {
   tcp_client->write(data);
 }
 
-void Bridge::handle_read(Package &package) {
+void Bridge::handle_tcp_read(Package &package) {
   std::cout << "Bridge handle read" << std::endl;
   switch (package.get_body()->get_type()) {
   case Body::Type::Midi: {
     auto midi_body = std::dynamic_pointer_cast<MidiBody>(package.get_body());
-    auto message = std::dynamic_pointer_cast<MidiBody>(package.get_body());
-    std::vector<unsigned char> char_mesage;
-    for (auto &it : midi_body->get_message()) {
-      char_mesage.push_back((unsigned char)it);
-    }
-
-    midi_main.sendMessage(&char_mesage);
+    midi_devices.at(midi_body->get_device_index())
+        ->send_message(midi_body->get_message());
     break;
   }
   case Body::Type::Unkown: {
-    spdlog::warn("Recieved unkown package, ignoring it");
+    spdlog::warn("Ignored unkown package");
   }
   }
+}
+
+void Bridge::handle_midi_read(int device_index,
+                              std::vector<std::byte> message) {
+  spdlog::info("midi handler");
 }
 
 } // namespace sls3mcubridge
