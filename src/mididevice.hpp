@@ -12,10 +12,11 @@ public:
   void start_reading(std::function<void(int, std::vector<std::byte>)> callback);
   void send_message(std::vector<std::byte> message);
 
-  void handle_midi_read(double timeStamp, std::vector<unsigned char> *message,
-                        void *userData);
-
 private:
+  void handle_midi_read(double timeStamp, std::vector<unsigned char> *message);
+  static void handle_midi_read_static(double timeStamp,
+                                      std::vector<unsigned char> *message,
+                                      void *userData);
   std::string m_name;
   RtMidiIn m_in;
   RtMidiOut m_out;

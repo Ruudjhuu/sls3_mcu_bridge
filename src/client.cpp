@@ -20,7 +20,11 @@ void Client::connect(std::string const &host, int const &port) {
 }
 
 void Client::write(std::vector<std::byte> &message) {
-  socket.send(boost::asio::buffer(message));
+  try {
+    socket.send(boost::asio::buffer(message));
+  } catch (const std::exception &exc) {
+    spdlog::warn("Failed to send tcp message: " + std::string(exc.what()));
+  }
 }
 
 void Client::start_reading(std::function<void(Package &)> callback) {

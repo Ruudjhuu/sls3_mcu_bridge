@@ -1,8 +1,11 @@
 #include "bridge.hpp"
 #include <boost/asio.hpp>
+#include <cstddef>
 #include <functional>
+#include <ios>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -77,7 +80,27 @@ void Bridge::handle_tcp_read(Package &package) {
 
 void Bridge::handle_midi_read(int device_index,
                               std::vector<std::byte> message) {
-  spdlog::info("midi handler");
+
+  std::stringstream ss;
+  ss << std::hex;
+
+  for (auto &it : message) {
+    ss << std::setw(2) << std::setfill('0') << (int)it;
+  }
+
+  spdlog::info("midi handler. message.size: " + std::to_string(message.size()) +
+               ": " + ss.str());
+
+  size_t message_sie = 7 + message.size();
+
+  std::vector<std::byte> tcp_message = {
+      std::byte(0x55),        std::byte(0x43), std::byte(0x00), std::byte(0x01),
+      std::byte(message_sie), std::byte(0x00), std::byte(0x4d), std::byte(0x41),
+      std::byte(0x00),        std::byte(0x00), std::byte(0x67), std::byte(0x00),
+      std::byte(0x01)};
+
+  tcp_message.insert(tcp_message.end(), message.begin(), message.end());
+  tcp_client->write(tcp_message);
 }
 
 } // namespace sls3mcubridge
