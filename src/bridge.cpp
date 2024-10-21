@@ -1,7 +1,6 @@
 #include "bridge.hpp"
 #include <boost/asio.hpp>
 #include <cstddef>
-#include <functional>
 #include <ios>
 #include <iostream>
 #include <memory>
@@ -9,9 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "client.hpp"
+#include "libremidi/message.hpp"
 #include "package.hpp"
-#include "rtmidi/RtMidi.h"
 #include "spdlog/spdlog.h"
 
 namespace sls3mcubridge {
@@ -21,8 +19,7 @@ Bridge::Bridge(boost::asio::io_context &io_context, std::string ip, int port)
   tcp_client->connect(ip, port);
   send_init_messages();
 
-  midi_devices.push_back(
-      std::make_shared<MidiDevice>("MAIN", RtMidi::Api::LINUX_ALSA));
+  midi_devices.push_back(std::make_shared<MidiDevice>("MAIN"));
 }
 
 void Bridge::start() {
@@ -79,7 +76,7 @@ void Bridge::handle_tcp_read(Package &package) {
 }
 
 void Bridge::handle_midi_read(int device_index,
-                              std::vector<std::byte> message) {
+                              const libremidi::message &message) {
 
   std::stringstream ss;
   ss << std::hex;
@@ -99,7 +96,9 @@ void Bridge::handle_midi_read(int device_index,
       std::byte(0x00),        std::byte(0x00), std::byte(0x67), std::byte(0x00),
       std::byte(0x01)};
 
-  tcp_message.insert(tcp_message.end(), message.begin(), message.end());
+  for (auto &it : message) {
+    tcp_message.push_back(std::byte(it));
+  }
   tcp_client->write(tcp_message);
 }
 

@@ -1,4 +1,6 @@
-#include "rtmidi/RtMidi.h"
+
+#include "libremidi/libremidi.hpp"
+#include "libremidi/message.hpp"
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -8,19 +10,15 @@ namespace sls3mcubridge {
 
 class MidiDevice : public std::enable_shared_from_this<MidiDevice> {
 public:
-  MidiDevice(std::string name, RtMidi::Api api);
-  void start_reading(std::function<void(int, std::vector<std::byte>)> callback);
+  MidiDevice(std::string name);
+  void
+  start_reading(std::function<void(int, const libremidi::message &)> callback);
   void send_message(std::vector<std::byte> message);
 
 private:
-  void handle_midi_read(double timeStamp, std::vector<unsigned char> *message);
-  static void handle_midi_read_static(double timeStamp,
-                                      std::vector<unsigned char> *message,
-                                      void *userData);
   std::string m_name;
-  RtMidiIn m_in;
-  RtMidiOut m_out;
-  std::function<void(int, std::vector<std::byte>)> m_read_callback;
+  libremidi::midi_out m_out;
+  std::shared_ptr<libremidi::midi_in> m_in;
 };
 
 } // namespace sls3mcubridge

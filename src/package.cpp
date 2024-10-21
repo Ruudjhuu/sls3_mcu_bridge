@@ -109,6 +109,7 @@ std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
   case Type::Midi:
     return std::make_shared<MidiBody>(byte, sub_body_size, bytes_read);
   case Type::Unkown:
+  default:
     return std::make_shared<UnkownBody>(byte, sub_body_size, bytes_read);
   }
 }

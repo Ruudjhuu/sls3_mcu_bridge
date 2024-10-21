@@ -1,43 +1,29 @@
 #include "mididevice.hpp"
+#include "libremidi/input_configuration.hpp"
+#include "libremidi/libremidi.hpp"
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <spdlog/spdlog.h>
 #include <vector>
 
 namespace sls3mcubridge {
 
-MidiDevice::MidiDevice(std::string name, RtMidi::Api api)
-    : m_name(name), m_in(api, name), m_out(api, name) {
-  m_out.openVirtualPort(m_name);
-
-  // don't igore sysex
-  m_in.ignoreTypes(false, true, true);
+MidiDevice::MidiDevice(std::string name) : m_name(name), m_out() {
+  m_out.open_virtual_port(m_name);
 }
 
 void MidiDevice::start_reading(
-    std::function<void(int, std::vector<std::byte>)> callback) {
-  m_read_callback = callback;
+    std::function<void(int, const libremidi::message &)> callback) {
 
-  void *context_obj = this;
-  m_in.setCallback(&MidiDevice::handle_midi_read_static, context_obj);
-
-  m_in.openVirtualPort(m_name);
-}
-
-void MidiDevice::handle_midi_read_static(double timeStamp,
-                                         std::vector<unsigned char> *message,
-                                         void *userData) {
-  auto object = static_cast<MidiDevice *>(userData);
-  object->handle_midi_read(timeStamp, message);
-}
-
-void MidiDevice::handle_midi_read(double timeStamp,
-                                  std::vector<unsigned char> *message) {
-  std::vector<std::byte> byte_message;
-  for (auto &it : *message) {
-    byte_message.push_back(std::byte(it));
-  }
-  m_read_callback(0, byte_message);
+  m_in = std::make_shared<libremidi::midi_in>(libremidi::input_configuration{
+      .on_message =
+          [callback](const libremidi::message &message) {
+            callback(0, message);
+            auto test = message.bytes;
+          },
+      .ignore_sysex = false});
+  m_in->open_virtual_port(m_name);
 }
 
 void MidiDevice::send_message(std::vector<std::byte> message) {
@@ -45,8 +31,7 @@ void MidiDevice::send_message(std::vector<std::byte> message) {
   for (auto &it : message) {
     char_mesage.push_back((unsigned char)it);
   }
-
-  m_out.sendMessage(&char_mesage);
+  m_out.send_message(char_mesage);
 }
 
 } // namespace sls3mcubridge

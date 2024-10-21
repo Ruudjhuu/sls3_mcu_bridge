@@ -4,7 +4,6 @@
 #include "mididevice.hpp"
 #include <boost/asio/io_context.hpp>
 #include <memory>
-#include <rtmidi/RtMidi.h>
 #include <vector>
 
 namespace sls3mcubridge {
@@ -17,7 +16,7 @@ public:
 private:
   void send_init_messages();
   void handle_tcp_read(Package &package);
-  void handle_midi_read(int device_index, std::vector<std::byte> message);
+  void handle_midi_read(int device_index, const libremidi::message &message);
   boost::asio::io_context &io_context;
   std::shared_ptr<Client> tcp_client;
   std::vector<std::shared_ptr<MidiDevice>> midi_devices;
