@@ -1,5 +1,5 @@
 #include "bridge.hpp"
-#include <boost/asio.hpp>
+
 #include <cstddef>
 #include <ios>
 #include <iostream>
@@ -14,7 +14,7 @@
 
 namespace sls3mcubridge {
 
-Bridge::Bridge(boost::asio::io_context &io_context, std::string ip, int port)
+Bridge::Bridge(asio::io_context &io_context, std::string ip, int port)
     : io_context(io_context), tcp_client(std::make_shared<Client>(io_context)) {
   tcp_client->connect(ip, port);
   send_init_messages();

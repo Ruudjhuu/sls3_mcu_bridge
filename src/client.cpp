@@ -1,4 +1,4 @@
-#include <boost/asio/connect.hpp>
+
 #include <cstddef>
 #include <exception>
 #include <format>
@@ -6,22 +6,23 @@
 #include <spdlog/spdlog.h>
 #include <string>
 
+#include "asio.hpp" // IWYU pragma: export
 #include "client.hpp"
 #include "package.hpp"
 
 namespace sls3mcubridge {
 void Client::connect(std::string const &host, int const &port) {
   spdlog::info("Connecting to " + host + ":" + std::to_string(port));
-  boost::asio::ip::tcp::resolver resolver(io_context);
-  boost::asio::ip::tcp::resolver::iterator endpoint = resolver.resolve(
-      boost::asio::ip::tcp::resolver::query(host, std::to_string(port)));
-  boost::asio::connect(this->socket, endpoint);
+  asio::ip::tcp::resolver resolver(io_context);
+  asio::ip::tcp::resolver::iterator endpoint = resolver.resolve(
+      asio::ip::tcp::resolver::query(host, std::to_string(port)));
+  asio::connect(this->socket, endpoint);
   spdlog::info("Connected succesfully");
 }
 
 void Client::write(std::vector<std::byte> &message) {
   try {
-    socket.send(boost::asio::buffer(message));
+    socket.send(asio::buffer(message));
   } catch (const std::exception &exc) {
     spdlog::warn("Failed to send tcp message: " + std::string(exc.what()));
   }
@@ -29,16 +30,15 @@ void Client::write(std::vector<std::byte> &message) {
 
 void Client::start_reading(std::function<void(Package &)> callback) {
   read_callback = callback;
-  socket.async_read_some(
-      boost::asio::buffer(buffer),
-      std::bind(&Client::read_handler, shared_from_this(),
-                boost::asio::placeholders::error,
-                boost::asio::placeholders::bytes_transferred));
+  socket.async_read_some(asio::buffer(buffer),
+                         std::bind(&Client::read_handler, shared_from_this(),
+                                   asio::placeholders::error,
+                                   asio::placeholders::bytes_transferred));
 }
 
-void Client::read_handler(const boost::system::error_code &error,
+void Client::read_handler(const asio::error_code &error,
                           std::size_t bytes_transferred) {
-  if (error.value() == boost::system::errc::success) {
+  if (!error) {
     spdlog::info("handle message");
     try {
       int bytes_read = 0;
