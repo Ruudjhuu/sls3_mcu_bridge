@@ -78,15 +78,16 @@ void Bridge::handle_tcp_read(Package &package) {
 void Bridge::handle_midi_read(int device_index,
                               const libremidi::message &message) {
 
-  std::stringstream ss;
-  ss << std::hex;
+  std::stringstream substring;
+  substring << "type: " << std::hex << std::setw(2) << std::setfill('0')
+            << (int)message.get_message_type();
 
   for (auto &it : message) {
-    ss << std::setw(2) << std::setfill('0') << (int)it;
+    substring << std::setw(2) << std::setfill('0') << (int)it;
   }
 
   spdlog::info("midi handler. message.size: " + std::to_string(message.size()) +
-               ": " + ss.str());
+               ", " + ": " + substring.str());
 
   size_t message_sie = 7 + message.size();
 
