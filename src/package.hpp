@@ -1,5 +1,6 @@
 #pragma once
 
+#include "libremidi/message.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -7,6 +8,7 @@
 #include <vector>
 
 namespace sls3mcubridge {
+namespace tcp {
 class ISerialize {
 public:
   virtual std::vector<std::byte> serialize() = 0;
@@ -31,13 +33,17 @@ class Body : ISerialize {
 public:
   enum Type {
     Unkown,
-    Midi,
+    IncommingMidi,
+    OutgoingMidi,
+    SysEx,
   };
 
   static const int BODY_HEADER_SIZE = 4;
   virtual std::vector<std::byte> serialize();
   static inline const std::map<uint16_t, Type> int16_to_type_map = {
-      {19789, Type::Midi}};
+      {19789, Type::IncommingMidi},
+      {19777, Type::OutgoingMidi},
+      {21331, Type::SysEx}};
 
   static std::shared_ptr<Body> create(std::byte buffer[], size_t body_size,
                                       int &bytes_read);
@@ -54,16 +60,40 @@ private:
   int16_t type_int;
 };
 
-class MidiBody : public Body {
+class IncommingMidiBody : public Body {
 public:
-  MidiBody(std::byte buffer[], size_t size, int &bytes_read);
+  IncommingMidiBody(std::byte buffer[], size_t size, int &bytes_read);
   std::vector<std::byte> serialize();
   int get_device_index();
-  std::vector<std::byte> &get_message() { return m_message; }
+  libremidi::message &get_message() { return m_message; }
 
 private:
   std::byte m_device;
-  std::vector<std::byte> m_message;
+  libremidi::message m_message;
+};
+
+class OutgoingMidiBody : public Body {
+public:
+  OutgoingMidiBody(std::byte buffer[], size_t size, int &bytes_read);
+  std::vector<std::byte> serialize();
+  int get_device_index();
+  const std::vector<libremidi::message> &get_messages() { return m_messages; }
+
+private:
+  std::byte m_device;
+  std::vector<libremidi::message> m_messages;
+};
+
+class SysExMidiBody : public Body {
+public:
+  SysExMidiBody(std::byte buffer[], size_t size, int &bytes_read);
+  std::vector<std::byte> serialize();
+  int get_device_index();
+  const libremidi::message &get_message() { return m_message; }
+
+private:
+  std::byte m_device;
+  libremidi::message m_message;
 };
 
 class UnkownBody : public Body {
@@ -86,4 +116,5 @@ private:
   Header m_header;
   std::shared_ptr<Body> m_body;
 };
+} // namespace tcp
 } // namespace sls3mcubridge

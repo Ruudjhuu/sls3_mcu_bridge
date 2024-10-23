@@ -1,4 +1,7 @@
 #include "package.hpp"
+#include "libremidi/config.hpp"
+#include "libremidi/message.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -6,6 +9,7 @@
 #include <vector>
 
 namespace sls3mcubridge {
+namespace tcp {
 
 const std::byte DELIMITER = std::byte(0x0);
 
@@ -106,10 +110,13 @@ std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
   size_t sub_body_size = body_size - BODY_HEADER_SIZE;
 
   switch (type) {
-  case Type::Midi:
-    return std::make_shared<MidiBody>(byte, sub_body_size, bytes_read);
+  case Type::IncommingMidi:
+    return std::make_shared<IncommingMidiBody>(byte, sub_body_size, bytes_read);
+  case Type::OutgoingMidi:
+    return std::make_shared<OutgoingMidiBody>(byte, sub_body_size, bytes_read);
+  case Type::SysEx:
+    return std::make_shared<SysExMidiBody>(byte, sub_body_size, bytes_read);
   case Type::Unkown:
-  default:
     return std::make_shared<UnkownBody>(byte, sub_body_size, bytes_read);
   }
 }
@@ -134,8 +141,9 @@ uint16_t Body::find_type_in_map(Type type) {
   return 0;
 }
 
-MidiBody::MidiBody(std::byte buffer[], size_t size, int &bytes_read)
-    : Body(Body::Type::Midi, size) {
+IncommingMidiBody::IncommingMidiBody(std::byte buffer[], size_t size,
+                                     int &bytes_read)
+    : Body(Body::Type::IncommingMidi, size) {
   int step = 0;
   std::byte *current_byte = buffer;
   for (int i = 0; i < size; i++) {
@@ -155,7 +163,7 @@ MidiBody::MidiBody(std::byte buffer[], size_t size, int &bytes_read)
       if (i == size - 1) {
         break;
       }
-      m_message.push_back(*current_byte);
+      m_message.bytes.push_back((unsigned char)*current_byte);
       break;
     }
     bytes_read++;
@@ -163,18 +171,20 @@ MidiBody::MidiBody(std::byte buffer[], size_t size, int &bytes_read)
   }
 }
 
-std::vector<std::byte> MidiBody::serialize() {
+std::vector<std::byte> IncommingMidiBody::serialize() {
   auto tmp = std::vector<std::byte>();
   auto body_header = Body::serialize();
   tmp.insert(tmp.end(), body_header.begin(), body_header.end());
   tmp.push_back(m_device);
   tmp.push_back(DELIMITER);
-  tmp.insert(tmp.end(), m_message.begin(), m_message.end());
+  for (auto &it : m_message) {
+    tmp.push_back(std::byte(it));
+  }
   tmp.push_back(DELIMITER);
   return tmp;
 }
 
-int MidiBody::get_device_index() {
+int IncommingMidiBody::get_device_index() {
   switch (m_device) {
   case std::byte(0x6c):
     return 0;
@@ -185,6 +195,109 @@ int MidiBody::get_device_index() {
   default:
     throw std::invalid_argument("Could not determine midi device index");
   }
+}
+
+OutgoingMidiBody::OutgoingMidiBody(std::byte buffer[], size_t size,
+                                   int &bytes_read)
+    : Body(Body::Type::OutgoingMidi, size) {
+  int step = 0;
+  int nr_of_messages = 0;
+  std::byte *current_byte = buffer;
+  for (int i = 0; i < size; i++) {
+    switch (step) {
+    case 0:
+      m_device = *current_byte;
+      step++;
+      break;
+    case 1:
+      if (*current_byte != DELIMITER) {
+        throw std::invalid_argument("Delimiter expected");
+      }
+      step++;
+      break;
+    case 2:
+      nr_of_messages = (int)*current_byte;
+      step++;
+      break;
+    case 3:
+      for (int j = 0; j < nr_of_messages; j++) {
+        m_messages.push_back(libremidi::message(
+            {(unsigned char)*current_byte, (unsigned char)*(current_byte + 1),
+             (unsigned char)*(current_byte + 2)}));
+        current_byte += 3;
+        bytes_read += 3;
+      }
+      return;
+    }
+    bytes_read++;
+    current_byte++;
+  }
+}
+
+std::vector<std::byte> OutgoingMidiBody::serialize() {
+  auto tmp = std::vector<std::byte>();
+  auto body_header = Body::serialize();
+  tmp.insert(tmp.end(), body_header.begin(), body_header.end());
+  tmp.push_back(m_device);
+  tmp.push_back(DELIMITER);
+  tmp.push_back(std::byte(m_messages.size()));
+  for (auto &it : m_messages) {
+    for (auto &itt : it) {
+      tmp.push_back(std::byte(itt));
+    }
+  }
+  return tmp;
+}
+
+SysExMidiBody::SysExMidiBody(std::byte buffer[], size_t size, int &bytes_read)
+    : Body(Body::Type::SysEx, size) {
+  int step = 0;
+  int sysex_length = 0;
+  std::byte *current_byte = buffer;
+  for (int i = 0; i < size; i++) {
+    switch (step) {
+    case 0:
+      m_device = *current_byte;
+      step++;
+      break;
+    case 1:
+    case 3:
+      if (*current_byte != DELIMITER) {
+        throw std::invalid_argument("Delimiter expected");
+      }
+      step++;
+      break;
+    case 2:
+      sysex_length = (int)*current_byte;
+      step++;
+      break;
+    case 4:
+      libremidi::midi_bytes tmp_midi;
+      for (int j = 0; j < sysex_length; j++) {
+        tmp_midi.push_back((unsigned char)*current_byte);
+        bytes_read++;
+        current_byte++;
+      }
+      m_message.bytes = tmp_midi;
+      return;
+    }
+    bytes_read++;
+    current_byte++;
+  }
+}
+
+std::vector<std::byte> SysExMidiBody::serialize() {
+  auto tmp = std::vector<std::byte>();
+  auto body_header = Body::serialize();
+  tmp.insert(tmp.end(), body_header.begin(), body_header.end());
+  tmp.push_back(m_device);
+  tmp.push_back(DELIMITER);
+  tmp.push_back(std::byte(m_message.size()));
+  tmp.push_back(DELIMITER);
+  for (auto &it : m_message) {
+    tmp.push_back(std::byte(it));
+  }
+  return tmp;
 }
 
 Package::Package(std::byte buffer[], int &bytes_read)
@@ -214,4 +327,5 @@ std::vector<std::byte> UnkownBody::serialize() {
   tmp.insert(tmp.end(), m_content.begin(), m_content.end());
   return tmp;
 }
+} // namespace tcp
 } // namespace sls3mcubridge

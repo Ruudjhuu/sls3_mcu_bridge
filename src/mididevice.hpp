@@ -1,10 +1,8 @@
+#include <functional>
+#include <memory>
 
 #include "libremidi/libremidi.hpp"
 #include "libremidi/message.hpp"
-#include <cstddef>
-#include <functional>
-#include <memory>
-#include <vector>
 
 namespace sls3mcubridge {
 
@@ -13,7 +11,7 @@ public:
   MidiDevice(std::string name);
   void
   start_reading(std::function<void(int, const libremidi::message &)> callback);
-  void send_message(std::vector<std::byte> message);
+  void send_message(libremidi::message message);
 
 private:
   std::string m_name;

@@ -1,4 +1,6 @@
 
+#include "client.hpp"
+
 #include <cstddef>
 #include <exception>
 #include <format>
@@ -6,8 +8,10 @@
 #include <spdlog/spdlog.h>
 #include <string>
 
-#include "asio.hpp" // IWYU pragma: export
-#include "client.hpp"
+#include "asio/connect.hpp"
+#include "asio/ip/tcp.hpp"
+#include "asio/placeholders.hpp"
+
 #include "package.hpp"
 
 namespace sls3mcubridge {
@@ -28,7 +32,7 @@ void Client::write(std::vector<std::byte> &message) {
   }
 }
 
-void Client::start_reading(std::function<void(Package &)> callback) {
+void Client::start_reading(std::function<void(tcp::Package &)> callback) {
   read_callback = callback;
   socket.async_read_some(asio::buffer(buffer),
                          std::bind(&Client::read_handler, shared_from_this(),
@@ -43,7 +47,7 @@ void Client::read_handler(const asio::error_code &error,
     try {
       int bytes_read = 0;
       while (bytes_read < bytes_transferred) {
-        auto package = Package(buffer, bytes_read);
+        auto package = tcp::Package(buffer, bytes_read);
         read_callback(package);
       }
     } catch (const std::exception &exc) {

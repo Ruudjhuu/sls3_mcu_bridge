@@ -1,10 +1,12 @@
 #pragma once
 
-#include "asio.hpp"
-#include "client.hpp"
-#include "mididevice.hpp"
 #include <memory>
 #include <vector>
+
+#include "asio/io_context.hpp"
+
+#include "client.hpp"
+#include "mididevice.hpp"
 
 namespace sls3mcubridge {
 
@@ -15,7 +17,7 @@ public:
 
 private:
   void send_init_messages();
-  void handle_tcp_read(Package &package);
+  void handle_tcp_read(tcp::Package &package);
   void handle_midi_read(int device_index, const libremidi::message &message);
   asio::io_context &io_context;
   std::shared_ptr<Client> tcp_client;

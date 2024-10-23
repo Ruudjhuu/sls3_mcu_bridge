@@ -9,8 +9,9 @@
 #include <vector>
 
 #include "libremidi/message.hpp"
-#include "package.hpp"
 #include "spdlog/spdlog.h"
+
+#include "package.hpp"
 
 namespace sls3mcubridge {
 
@@ -60,16 +61,18 @@ void Bridge::send_init_messages() {
   tcp_client->write(data);
 }
 
-void Bridge::handle_tcp_read(Package &package) {
+void Bridge::handle_tcp_read(tcp::Package &package) {
   std::cout << "Bridge handle read" << std::endl;
   switch (package.get_body()->get_type()) {
-  case Body::Type::Midi: {
-    auto midi_body = std::dynamic_pointer_cast<MidiBody>(package.get_body());
+  case tcp::Body::Type::IncommingMidi: {
+    auto midi_body =
+        std::dynamic_pointer_cast<tcp::IncommingMidiBody>(package.get_body());
     midi_devices.at(midi_body->get_device_index())
         ->send_message(midi_body->get_message());
     break;
   }
-  case Body::Type::Unkown: {
+  case tcp::Body::Type::Unkown:
+  default: {
     spdlog::warn("Ignored unkown package");
   }
   }

@@ -34,7 +34,7 @@ add_library(sls3_mcu_bridge_lib
   bridge.cpp bridge.hpp
   mididevice.cpp mididevice.hpp)
 
-target_link_libraries(sls3_mcu_bridge_lib PUBLIC asio libremidi fmt)
+target_link_libraries(sls3_mcu_bridge_lib PUBLIC libremidi asio fmt)
 
 # Executable
 add_executable(sls3_mcu_bridge)

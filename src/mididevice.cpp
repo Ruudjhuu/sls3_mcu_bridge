@@ -1,11 +1,13 @@
-#include "mididevice.hpp"
-#include "libremidi/input_configuration.hpp"
-#include "libremidi/libremidi.hpp"
-#include <cstddef>
+
 #include <functional>
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <vector>
+
+#include "libremidi/libremidi.hpp"
+#include "libremidi/message.hpp"
+
+#include "mididevice.hpp"
 
 namespace sls3mcubridge {
 
@@ -26,12 +28,8 @@ void MidiDevice::start_reading(
   m_in->open_virtual_port(m_name);
 }
 
-void MidiDevice::send_message(std::vector<std::byte> message) {
-  std::vector<unsigned char> char_mesage;
-  for (auto &it : message) {
-    char_mesage.push_back((unsigned char)it);
-  }
-  m_out.send_message(char_mesage);
+void MidiDevice::send_message(libremidi::message message) {
+  m_out.send_message(message);
 }
 
 } // namespace sls3mcubridge
