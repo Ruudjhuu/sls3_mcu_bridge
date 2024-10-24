@@ -1,11 +1,13 @@
 #include "bridge.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <ios>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "libremidi/message.hpp"
@@ -21,15 +23,21 @@ Bridge::Bridge(asio::io_context &io_context, std::string ip, int port)
   send_init_messages();
 
   midi_devices.push_back(std::make_shared<MidiDevice>("MAIN"));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  midi_devices.push_back(std::make_shared<MidiDevice>("EXT1"));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  midi_devices.push_back(std::make_shared<MidiDevice>("EXT2"));
 }
 
 void Bridge::start() {
   tcp_client->start_reading(std::bind(
       &Bridge::handle_tcp_read, shared_from_this(), std::placeholders::_1));
 
-  for (auto &it : midi_devices)
-    it->start_reading(std::bind(&Bridge::handle_midi_read, shared_from_this(),
-                                0, std::placeholders::_2));
+  for (int i = 0; i < midi_devices.size(); i++) {
+    midi_devices.at(i)->start_reading(std::bind(&Bridge::handle_midi_read,
+                                                shared_from_this(), i,
+                                                std::placeholders::_2));
+  }
 }
 
 void Bridge::send_init_messages() {
@@ -80,19 +88,34 @@ void Bridge::handle_tcp_read(tcp::Package &package) {
 
 void Bridge::handle_midi_read(int device_index,
                               const libremidi::message &message) {
-
+  std::cout << device_index << std::endl;
   std::stringstream substring;
   substring << "type: " << std::hex << std::setw(2) << std::setfill('0')
             << (int)message.get_message_type();
 
   for (auto &it : message) {
-    substring << std::setw(2) << std::setfill('0') << (int)it;
+    substring << " " << std::setw(2) << std::setfill('0') << (int)it;
   }
 
   spdlog::info("midi handler. message.size: " + std::to_string(message.size()) +
                ", " + ": " + substring.str());
 
-  auto tmp_device = std::byte(0x67);
+  auto tmp_device = std::byte(0);
+  switch (device_index) {
+  case 0:
+    tmp_device = std::byte(0x67);
+    break;
+  case 1:
+    tmp_device = std::byte(0x68);
+    break;
+  case 2:
+    tmp_device = std::byte(0x69);
+    break;
+  default:
+    spdlog::warn("Bridge midi read tries to handle unsupported device index");
+    break;
+  }
+
   std::shared_ptr<tcp::Body> body;
   switch (message.get_message_type()) {
   case libremidi::message_type::NOTE_OFF:

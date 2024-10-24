@@ -15,6 +15,11 @@ MidiDevice::MidiDevice(std::string name) : m_name(name), m_out() {
   m_out.open_virtual_port(m_name);
 }
 
+MidiDevice::~MidiDevice() {
+  m_out.close_port();
+  m_in->close_port();
+}
+
 void MidiDevice::start_reading(
     std::function<void(int, const libremidi::message &)> callback) {
 

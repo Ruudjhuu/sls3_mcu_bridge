@@ -9,6 +9,7 @@ namespace sls3mcubridge {
 class MidiDevice : public std::enable_shared_from_this<MidiDevice> {
 public:
   MidiDevice(std::string name);
+  ~MidiDevice();
   void
   start_reading(std::function<void(int, const libremidi::message &)> callback);
   void send_message(libremidi::message message);
