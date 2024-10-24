@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 #include <cstddef>
 
+#include "libremidi/message.hpp"
 #include "package.hpp"
 
 namespace sls3mcubridge {
@@ -20,6 +21,24 @@ TEST(TestTcpPackageCreation, test_incommingmidibody_create_by_buffer) {
   ASSERT_EQ(body->get_type(), Body::Type::IncommingMidi);
   ASSERT_EQ(std::vector<std::byte>(input, input + size), body->serialize());
   ASSERT_EQ(read_bytes, size);
+}
+
+TEST(TestTcpPackageCreation, test_incommingmidibody_create_by_args) {
+  const size_t size = 10;
+  std::byte expected_output[size] = {
+      std::byte(0x4d), std::byte(0x4d), std::byte(0x00), std::byte(0x00),
+      std::byte(0x6c), std::byte(0x00), std::byte(0x90), std::byte(0x10),
+      std::byte(0x7f), std::byte(0x00)};
+
+  auto device = std::byte(0x6c);
+  auto message = libremidi::message({0x90, 0x10, 0x7f});
+
+  auto body = IncommingMidiBody(device, message);
+
+  ASSERT_EQ(body.get_type(), Body::Type::IncommingMidi);
+  ASSERT_EQ(std::vector<std::byte>(expected_output, expected_output + size),
+            body.serialize());
+  ASSERT_EQ(body.get_size(), size);
 }
 
 TEST(TestTcpPackageCreation, test_outgoingmidibody_create_by_buffer) {
@@ -49,6 +68,26 @@ TEST(TestTcpPackageCreation, test_outgoingmidibody_create_by_buffer) {
   ASSERT_EQ(read_bytes, size);
 }
 
+TEST(TestTcpPackageCreation, test_outgoingmidibody_create_by_args) {
+  const size_t size = 13;
+  std::byte expected_output[size] = {
+      std::byte(0x4d), std::byte(0x41), std::byte(0x00), std::byte(0x00),
+      std::byte(0x68), std::byte(0x00), std::byte(0x02), std::byte(0xb0),
+      std::byte(0x40), std::byte(0x30), std::byte(0xb0), std::byte(0x41),
+      std::byte(0x30)};
+
+  auto device = std::byte(0x68);
+  auto messages = {libremidi::message({0xb0, 0x40, 0x30}),
+                   libremidi::message({0xb0, 0x41, 0x30})};
+
+  auto body = OutgoingMidiBody(device, messages);
+
+  ASSERT_EQ(body.get_type(), Body::Type::OutgoingMidi);
+  ASSERT_EQ(std::vector<std::byte>(expected_output, expected_output + size),
+            body.serialize());
+  ASSERT_EQ(body.get_size(), size);
+}
+
 TEST(TestTcpPackageCreation, test_sysexmidibody_create_by_buffer) {
   const size_t size = 15;
   std::byte input[size] = {std::byte(0x53), std::byte(0x53), std::byte(0x00),
@@ -63,6 +102,24 @@ TEST(TestTcpPackageCreation, test_sysexmidibody_create_by_buffer) {
   ASSERT_EQ(body->get_type(), Body::Type::SysEx);
   ASSERT_EQ(std::vector<std::byte>(input, input + size), body->serialize());
   ASSERT_EQ(read_bytes, size);
+}
+
+TEST(TestTcpPackageCreation, test_sysexmidibody_create_by_args) {
+  const size_t size = 15;
+  std::byte expected_output[size] = {
+      std::byte(0x53), std::byte(0x53), std::byte(0x00), std::byte(0x00),
+      std::byte(0x68), std::byte(0x00), std::byte(0x07), std::byte(0x00),
+      std::byte(0xf0), std::byte(0x00), std::byte(0x00), std::byte(0x66),
+      std::byte(0x15), std::byte(0x00), std::byte(0xf7)};
+
+  auto device = std::byte(0x68);
+  auto message = libremidi::message({0xf0, 0x00, 0x00, 0x66, 0x15, 0x00, 0xf7});
+  auto body = SysExMidiBody(device, message);
+
+  ASSERT_EQ(body.get_type(), Body::Type::SysEx);
+  ASSERT_EQ(std::vector<std::byte>(expected_output, expected_output + size),
+            body.serialize());
+  ASSERT_EQ(body.get_size(), size);
 }
 
 TEST(TestTcpPackageCreation, test_unkownbody_create_by_buffer) {
@@ -94,6 +151,16 @@ TEST(TestTcpPackageCreation, test_header_serialization) {
 
   ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
   ASSERT_EQ(read_bytes, size);
+}
+
+TEST(TestTcpPackageCreation, test_header_create_by_arg) {
+  const size_t size = 6;
+  std::byte input[size] = {std::byte('U'),  std::byte('C'),  std::byte(0x00),
+                           std::byte(0x01), std::byte(0x0a), std::byte(0x00)};
+
+  auto output = Header(10);
+
+  ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
 }
 
 TEST(TestTcpPackageCreation, test_package_serialization) {

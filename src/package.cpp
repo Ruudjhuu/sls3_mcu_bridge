@@ -46,7 +46,10 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
 
     // unkown
     case 3:
-      m_unkown_byte = *current_byte;
+      if (*current_byte != UNKOWN_BYTE) {
+        throw std::invalid_argument("Expected 0x01 in step " +
+                                    std::to_string(step));
+      }
       step++;
       break;
 
@@ -66,7 +69,7 @@ std::vector<std::byte> Header::serialize() {
   buffer.push_back(FIRST_BYTE);
   buffer.push_back(SECOND_BYTE);
   buffer.push_back(DELIMITER);
-  buffer.push_back(m_unkown_byte);
+  buffer.push_back(UNKOWN_BYTE);
   buffer.push_back(std::byte(m_body_size));
   buffer.push_back(DELIMITER);
   return buffer;
@@ -194,6 +197,17 @@ int IncommingMidiBody::get_device_index() {
     return 2;
   default:
     throw std::invalid_argument("Could not determine midi device index");
+  }
+}
+
+OutgoingMidiBody::OutgoingMidiBody(std::byte device,
+                                   std::vector<libremidi::message> messages)
+    : Body(Body::Type::OutgoingMidi, 0), m_device(device),
+      m_messages(messages) {
+  m_size += BODY_HEADER_SIZE;
+  m_size += 3;
+  for (auto &it : m_messages) {
+    m_size += it.size();
   }
 }
 

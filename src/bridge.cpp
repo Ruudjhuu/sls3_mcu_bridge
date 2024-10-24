@@ -92,18 +92,31 @@ void Bridge::handle_midi_read(int device_index,
   spdlog::info("midi handler. message.size: " + std::to_string(message.size()) +
                ", " + ": " + substring.str());
 
-  size_t message_sie = 7 + message.size();
-
-  std::vector<std::byte> tcp_message = {
-      std::byte(0x55),        std::byte(0x43), std::byte(0x00), std::byte(0x01),
-      std::byte(message_sie), std::byte(0x00), std::byte(0x4d), std::byte(0x41),
-      std::byte(0x00),        std::byte(0x00), std::byte(0x67), std::byte(0x00),
-      std::byte(0x01)};
-
-  for (auto &it : message) {
-    tcp_message.push_back(std::byte(it));
+  auto tmp_device = std::byte(0x67);
+  std::shared_ptr<tcp::Body> body;
+  switch (message.get_message_type()) {
+  case libremidi::message_type::NOTE_OFF:
+  case libremidi::message_type::NOTE_ON:
+  case libremidi::message_type::POLY_PRESSURE:
+  case libremidi::message_type::PROGRAM_CHANGE:
+  case libremidi::message_type::CONTROL_CHANGE:
+  case libremidi::message_type::AFTERTOUCH:
+  case libremidi::message_type::PITCH_BEND: {
+    auto tmp_list = {message};
+    body = std::make_shared<tcp::OutgoingMidiBody>(tmp_device, tmp_list);
+    break;
   }
-  tcp_client->write(tcp_message);
+  case libremidi::message_type::SYSTEM_EXCLUSIVE:
+    body = std::make_shared<tcp::SysExMidiBody>(tmp_device, message);
+    break;
+  default:
+    spdlog::warn("Recieved unkown midi message");
+    break;
+  }
+
+  tcp::Package tcp_message(body);
+  auto bytes = tcp_message.serialize();
+  tcp_client->write(bytes);
 }
 
 } // namespace sls3mcubridge
