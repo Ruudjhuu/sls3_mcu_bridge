@@ -1,0 +1,5 @@
+---
+Checks: "*,-llvmlibc*,-altera*,-fuchsia-default-arguments-calls,-modernize-use-trailing-return-type"
+CheckOptions:
+  - key: hicpp-signed-bitwise.IgnorePositiveIntegerLiterals
+    value: 1

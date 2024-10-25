@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include "asio/buffer.hpp"
 #include "asio/io_context.hpp"
 #include "asio/ip/tcp.hpp"
 
@@ -15,18 +16,16 @@ const size_t MAX_BUFFER_SIZE = 1500;
 namespace sls3mcubridge {
 class Client : public std::enable_shared_from_this<Client> {
 public:
-  Client(asio::io_context &io_context)
-      : io_context(io_context), socket(io_context) {}
+  explicit Client(asio::io_context &io_context) : m_socket(io_context) {}
   void connect(std::string const &host, int const &port);
-  void write(std::vector<std::byte> &message);
-  void start_reading(std::function<void(tcp::Package &)>);
+  void write(const asio::const_buffer &message);
+  void start_reading(const std::function<void(tcp::Package &)> &callback);
 
 private:
   void read_handler(const asio::error_code &error,
                     std::size_t bytes_transferred);
-  asio::io_context &io_context;
-  asio::ip::tcp::socket socket;
-  std::function<void(tcp::Package &)> read_callback;
-  std::byte buffer[MAX_BUFFER_SIZE];
+  asio::ip::tcp::socket m_socket;
+  std::function<void(tcp::Package &)> m_read_callback;
+  std::byte m_buffer[MAX_BUFFER_SIZE]{};
 };
 } // namespace sls3mcubridge

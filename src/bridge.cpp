@@ -1,15 +1,15 @@
 #include "bridge.hpp"
 
-#include <chrono>
+#include <array>
 #include <cstddef>
 #include <ios>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
-#include <thread>
 #include <vector>
 
+#include "asio/buffer.hpp"
 #include "libremidi/message.hpp"
 #include "spdlog/spdlog.h"
 
@@ -17,15 +17,37 @@
 
 namespace sls3mcubridge {
 
-Bridge::Bridge(asio::io_context &io_context, std::string ip, int port)
-    : io_context(io_context), tcp_client(std::make_shared<Client>(io_context)) {
-  tcp_client->connect(ip, port);
+const std::array<std::byte, 16> FIRST_INIT_MESSAGE = {
+    std::byte{0x55}, std::byte{0x43}, std::byte{0x00}, std::byte{0x01},
+    std::byte{0x0a}, std::byte{0x00}, std::byte{0x45}, std::byte{0x51},
+    std::byte{0x64}, std::byte{0x00}, std::byte{0x65}, std::byte{0x00},
+    std::byte{0x4d}, std::byte{0x49}, std::byte{0x44}, std::byte{0x49}};
+
+const std::array<std::byte, 60> SECOND_INIT_MESSAGE = {
+    std::byte{0x55}, std::byte{0x43}, std::byte{0x00}, std::byte{0x01},
+    std::byte{0x0e}, std::byte{0x00}, std::byte{0x42}, std::byte{0x4f},
+    std::byte{0x6c}, std::byte{0x00}, std::byte{0x67}, std::byte{0x00},
+    std::byte{0x4d}, std::byte{0x69}, std::byte{0x64}, std::byte{0x63},
+    std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+    std::byte{0x55}, std::byte{0x43}, std::byte{0x00}, std::byte{0x01},
+    std::byte{0x0e}, std::byte{0x00}, std::byte{0x42}, std::byte{0x4f},
+    std::byte{0x6d}, std::byte{0x00}, std::byte{0x68}, std::byte{0x00},
+    std::byte{0x4d}, std::byte{0x69}, std::byte{0x64}, std::byte{0x63},
+    std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+    std::byte{0x55}, std::byte{0x43}, std::byte{0x00}, std::byte{0x01},
+    std::byte{0x0e}, std::byte{0x00}, std::byte{0x42}, std::byte{0x4f},
+    std::byte{0x6e}, std::byte{0x00}, std::byte{0x69}, std::byte{0x00},
+    std::byte{0x4d}, std::byte{0x69}, std::byte{0x64}, std::byte{0x63},
+    std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}};
+
+Bridge::Bridge(asio::io_context &io_context, const std::string &ip_address,
+               int port)
+    : tcp_client(std::make_shared<Client>(io_context)) {
+  tcp_client->connect(ip_address, port);
   send_init_messages();
 
   midi_devices.push_back(std::make_shared<MidiDevice>("MAIN"));
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
   midi_devices.push_back(std::make_shared<MidiDevice>("EXT1"));
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
   midi_devices.push_back(std::make_shared<MidiDevice>("EXT2"));
 }
 
@@ -41,32 +63,11 @@ void Bridge::start() {
 }
 
 void Bridge::send_init_messages() {
-  std::vector<std::byte> data = {
-      std::byte{0x55}, std::byte{0x43}, std::byte{0x00}, std::byte{0x01},
-      std::byte{0x0a}, std::byte{0x00}, std::byte{0x45}, std::byte{0x51},
-      std::byte{0x64}, std::byte{0x00}, std::byte{0x65}, std::byte{0x00},
-      std::byte{0x4d}, std::byte{0x49}, std::byte{0x44}, std::byte{0x49}};
-  tcp_client->write(data);
+  tcp_client->write(asio::buffer(FIRST_INIT_MESSAGE));
 
-  // TODO try to get number of midi devices from response
+  // TODO(ruud): try to get number of midi devices from response
 
-  data = {std::byte{0x55}, std::byte{0x43}, std::byte{0x00}, std::byte{0x01},
-          std::byte{0x0e}, std::byte{0x00}, std::byte{0x42}, std::byte{0x4f},
-          std::byte{0x6c}, std::byte{0x00}, std::byte{0x67}, std::byte{0x00},
-          std::byte{0x4d}, std::byte{0x69}, std::byte{0x64}, std::byte{0x63},
-          std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
-          std::byte{0x55}, std::byte{0x43}, std::byte{0x00}, std::byte{0x01},
-          std::byte{0x0e}, std::byte{0x00}, std::byte{0x42}, std::byte{0x4f},
-          std::byte{0x6d}, std::byte{0x00}, std::byte{0x68}, std::byte{0x00},
-          std::byte{0x4d}, std::byte{0x69}, std::byte{0x64}, std::byte{0x63},
-          std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
-          std::byte{0x55}, std::byte{0x43}, std::byte{0x00}, std::byte{0x01},
-          std::byte{0x0e}, std::byte{0x00}, std::byte{0x42}, std::byte{0x4f},
-          std::byte{0x6e}, std::byte{0x00}, std::byte{0x69}, std::byte{0x00},
-          std::byte{0x4d}, std::byte{0x69}, std::byte{0x64}, std::byte{0x63},
-          std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}};
-
-  tcp_client->write(data);
+  tcp_client->write(asio::buffer(SECOND_INIT_MESSAGE));
 }
 
 void Bridge::handle_tcp_read(tcp::Package &package) {
@@ -91,10 +92,11 @@ void Bridge::handle_midi_read(int device_index,
   std::cout << device_index << std::endl;
   std::stringstream substring;
   substring << "type: " << std::hex << std::setw(2) << std::setfill('0')
-            << (int)message.get_message_type();
+            << static_cast<int>(message.get_message_type());
 
-  for (auto &it : message) {
-    substring << " " << std::setw(2) << std::setfill('0') << (int)it;
+  for (const auto &iter : message) {
+    substring << " " << std::setw(2) << std::setfill('0')
+              << static_cast<int>(iter);
   }
 
   spdlog::info("midi handler. message.size: " + std::to_string(message.size()) +
@@ -139,7 +141,7 @@ void Bridge::handle_midi_read(int device_index,
 
   tcp::Package tcp_message(body);
   auto bytes = tcp_message.serialize();
-  tcp_client->write(bytes);
+  tcp_client->write(asio::buffer(bytes));
 }
 
 } // namespace sls3mcubridge

@@ -8,7 +8,7 @@
 namespace sls3mcubridge {
 namespace tcp {
 
-TEST(TestTcpPackageCreation, test_incommingmidibody_create_by_buffer) {
+TEST(TestTcpPackageCreation, testIncommingmidibodyCreateByBuffer) {
   const size_t size = 10;
   std::byte input[size] = {std::byte(0x4d), std::byte(0x4d), std::byte(0x00),
                            std::byte(0x00), std::byte(0x6c), std::byte(0x00),
@@ -23,7 +23,7 @@ TEST(TestTcpPackageCreation, test_incommingmidibody_create_by_buffer) {
   ASSERT_EQ(read_bytes, size);
 }
 
-TEST(TestTcpPackageCreation, test_incommingmidibody_create_by_args) {
+TEST(TestTcpPackageCreation, testIncommingmidibodyCreateByArgs) {
   const size_t size = 10;
   std::byte expected_output[size] = {
       std::byte(0x4d), std::byte(0x4d), std::byte(0x00), std::byte(0x00),
@@ -41,7 +41,7 @@ TEST(TestTcpPackageCreation, test_incommingmidibody_create_by_args) {
   ASSERT_EQ(body.get_size(), size);
 }
 
-TEST(TestTcpPackageCreation, test_outgoingmidibody_create_by_buffer) {
+TEST(TestTcpPackageCreation, testOutgoingmidibodyCreateByBuffer) {
   const size_t size = 52;
   std::byte input[size] = {
       std::byte(0x4d), std::byte(0x41), std::byte(0x00), std::byte(0x00),
@@ -68,7 +68,7 @@ TEST(TestTcpPackageCreation, test_outgoingmidibody_create_by_buffer) {
   ASSERT_EQ(read_bytes, size);
 }
 
-TEST(TestTcpPackageCreation, test_outgoingmidibody_create_by_args) {
+TEST(TestTcpPackageCreation, testOutgoingmidibodyCreateByArgs) {
   const size_t size = 13;
   std::byte expected_output[size] = {
       std::byte(0x4d), std::byte(0x41), std::byte(0x00), std::byte(0x00),
@@ -88,7 +88,7 @@ TEST(TestTcpPackageCreation, test_outgoingmidibody_create_by_args) {
   ASSERT_EQ(body.get_size(), size);
 }
 
-TEST(TestTcpPackageCreation, test_sysexmidibody_create_by_buffer) {
+TEST(TestTcpPackageCreation, testSysexmidibodyCreateByBuffer) {
   const size_t size = 15;
   std::byte input[size] = {std::byte(0x53), std::byte(0x53), std::byte(0x00),
                            std::byte(0x00), std::byte(0x68), std::byte(0x00),
@@ -104,7 +104,7 @@ TEST(TestTcpPackageCreation, test_sysexmidibody_create_by_buffer) {
   ASSERT_EQ(read_bytes, size);
 }
 
-TEST(TestTcpPackageCreation, test_sysexmidibody_create_by_args) {
+TEST(TestTcpPackageCreation, testSysexmidibodyCreateByArgs) {
   const size_t size = 15;
   std::byte expected_output[size] = {
       std::byte(0x53), std::byte(0x53), std::byte(0x00), std::byte(0x00),
@@ -122,7 +122,7 @@ TEST(TestTcpPackageCreation, test_sysexmidibody_create_by_args) {
   ASSERT_EQ(body.get_size(), size);
 }
 
-TEST(TestTcpPackageCreation, test_unkownbody_create_by_buffer) {
+TEST(TestTcpPackageCreation, testUnkownbodyCreateByBuffer) {
   const size_t size = 10;
   std::byte input[size] = {std::byte(0x3d), std::byte(0x4d), std::byte(0x00),
                            std::byte(0x00), std::byte(0x6c), std::byte(0x00),
@@ -141,7 +141,7 @@ TEST(TestTcpPackageCreation, test_unkownbody_create_by_buffer) {
   ASSERT_EQ(read_bytes, size);
 }
 
-TEST(TestTcpPackageCreation, test_header_serialization) {
+TEST(TestTcpPackageCreation, testHeaderSerialization) {
   const size_t size = 6;
   std::byte input[size] = {std::byte('U'),  std::byte('C'),  std::byte(0x00),
                            std::byte(0x01), std::byte(0x0a), std::byte(0x00)};
@@ -153,7 +153,7 @@ TEST(TestTcpPackageCreation, test_header_serialization) {
   ASSERT_EQ(read_bytes, size);
 }
 
-TEST(TestTcpPackageCreation, test_header_create_by_arg) {
+TEST(TestTcpPackageCreation, testHeaderCreateByArg) {
   const size_t size = 6;
   std::byte input[size] = {std::byte('U'),  std::byte('C'),  std::byte(0x00),
                            std::byte(0x01), std::byte(0x0a), std::byte(0x00)};
@@ -163,7 +163,7 @@ TEST(TestTcpPackageCreation, test_header_create_by_arg) {
   ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
 }
 
-TEST(TestTcpPackageCreation, test_package_serialization) {
+TEST(TestTcpPackageCreation, testPackageSerialization) {
   const size_t size = 16;
   std::byte input[size] = {
       std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),

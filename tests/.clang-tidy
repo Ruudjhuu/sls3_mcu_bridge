@@ -1,0 +1,2 @@
+---
+Checks: "*,-llvmlibc*,-altera*,-fuchsia-default-arguments-calls,-modernize-use-trailing-return-type,-readability-magic-numbers,-cppcoreguidelines-avoid-magic-numbers"

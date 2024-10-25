@@ -8,11 +8,15 @@ namespace sls3mcubridge {
 
 class MidiDevice : public std::enable_shared_from_this<MidiDevice> {
 public:
-  MidiDevice(std::string name);
+  explicit MidiDevice(const std::string &name);
+  MidiDevice(const MidiDevice &obj) = delete;
+  MidiDevice(MidiDevice &&obj) = delete;
+  MidiDevice &operator=(const MidiDevice &obj) = delete;
+  MidiDevice &operator=(MidiDevice &&obj) = delete;
   ~MidiDevice();
-  void
-  start_reading(std::function<void(int, const libremidi::message &)> callback);
-  void send_message(libremidi::message message);
+  void start_reading(
+      const std::function<void(int, const libremidi::message &)> &callback);
+  void send_message(const libremidi::message &message);
 
 private:
   std::string m_name;

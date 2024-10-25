@@ -2,14 +2,14 @@
 #include "libremidi/config.hpp"
 #include "libremidi/message.hpp"
 
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <vector>
 
-namespace sls3mcubridge {
-namespace tcp {
+namespace sls3mcubridge::tcp {
 
 const std::byte DELIMITER = std::byte(0x0);
 
@@ -22,13 +22,13 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
     switch (step) {
     // Header UC
     case 0:
-      if (*current_byte != FIRST_BYTE) {
+      if (*current_byte != HEADEr_FIRST_BYTE) {
         throw std::invalid_argument("expected first byte to be 'U'");
       }
       step++;
       break;
     case 1:
-      if (*current_byte != SECOND_BYTE) {
+      if (*current_byte != HEADER_SECOND_BYTE) {
         throw std::invalid_argument("expected first byte to be 'C'");
       }
       step++;
@@ -36,7 +36,6 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
 
     // Delimiter
     case 2:
-    case 5:
       if (*current_byte != DELIMITER) {
         throw std::invalid_argument("Expected delimiter in step " +
                                     std::to_string(step));
@@ -46,7 +45,7 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
 
     // unkown
     case 3:
-      if (*current_byte != UNKOWN_BYTE) {
+      if (*current_byte != HEADER_UNKOWN_BYTE) {
         throw std::invalid_argument("Expected 0x01 in step " +
                                     std::to_string(step));
       }
@@ -58,6 +57,17 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
       m_body_size = std::to_integer<size_t>(*current_byte);
       step++;
       break;
+
+    // delimiter
+    case 5:
+      if (*current_byte != DELIMITER) {
+        throw std::invalid_argument("Expected delimiter in step " +
+                                    std::to_string(step));
+      }
+      step++;
+      break;
+    default:
+      throw std::out_of_range("Unexpected step handled");
     }
     bytes_read++;
     current_byte++;
@@ -66,10 +76,10 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
 
 std::vector<std::byte> Header::serialize() {
   std::vector<std::byte> buffer;
-  buffer.push_back(FIRST_BYTE);
-  buffer.push_back(SECOND_BYTE);
+  buffer.push_back(HEADEr_FIRST_BYTE);
+  buffer.push_back(HEADER_SECOND_BYTE);
   buffer.push_back(DELIMITER);
-  buffer.push_back(UNKOWN_BYTE);
+  buffer.push_back(HEADER_UNKOWN_BYTE);
   buffer.push_back(std::byte(m_body_size));
   buffer.push_back(DELIMITER);
   return buffer;
@@ -78,16 +88,16 @@ std::vector<std::byte> Header::serialize() {
 std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
                                    int &bytes_read) {
   int step = 0;
-  int type_int = 0;
+  uint16_t type_int = 0;
   std::byte *byte = buffer;
   for (int i = 0; i < BODY_HEADER_SIZE; i++) {
     switch (step) {
     case 0:
-      type_int = uint16_t(*byte) << 8;
+      type_int = static_cast<uint16_t>(*byte) << (sizeof(*byte) * CHAR_BIT);
       step++;
       break;
     case 1:
-      type_int |= uint16_t(*byte) << 0;
+      type_int |= static_cast<uint16_t>(*byte);
       step++;
       break;
     case 2:
@@ -98,6 +108,8 @@ std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
       }
       step++;
       break;
+    default:
+      throw std::out_of_range("Unexpected step handled");
     }
     byte++;
     bytes_read++;
@@ -106,7 +118,7 @@ std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
   Type type = Type::Unkown;
   try {
     type = int16_to_type_map.at(type_int);
-  } catch (std::out_of_range) {
+  } catch (std::out_of_range &) {
     type = Type::Unkown;
   }
 
@@ -127,17 +139,18 @@ std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
 std::vector<std::byte> Body::serialize() {
   std::vector<std::byte> tmp;
   uint16_t type_int = find_type_in_map(m_type);
-  tmp.push_back(std::byte(type_int >> 8));
-  tmp.push_back(std::byte(type_int >> 0));
+  tmp.push_back(
+      std::byte(type_int >> (sizeof(decltype(tmp)::value_type) * CHAR_BIT)));
+  tmp.push_back(std::byte(type_int));
   tmp.push_back(DELIMITER);
   tmp.push_back(DELIMITER);
   return tmp;
 }
 
 uint16_t Body::find_type_in_map(Type type) {
-  for (auto &it : int16_to_type_map) {
-    if (it.second == type) {
-      return it.first;
+  for (const auto &iter : int16_to_type_map) {
+    if (iter.second == type) {
+      return iter.first;
     }
   }
   // not found
@@ -166,8 +179,10 @@ IncommingMidiBody::IncommingMidiBody(std::byte buffer[], size_t size,
       if (i == size - 1) {
         break;
       }
-      m_message.bytes.push_back((unsigned char)*current_byte);
+      m_message.bytes.push_back(static_cast<unsigned char>(*current_byte));
       break;
+    default:
+      throw std::out_of_range("Unexpected step handled");
     }
     bytes_read++;
     current_byte++;
@@ -180,8 +195,8 @@ std::vector<std::byte> IncommingMidiBody::serialize() {
   tmp.insert(tmp.end(), body_header.begin(), body_header.end());
   tmp.push_back(m_device);
   tmp.push_back(DELIMITER);
-  for (auto &it : m_message) {
-    tmp.push_back(std::byte(it));
+  for (auto &iter : m_message) {
+    tmp.push_back(std::byte(iter));
   }
   tmp.push_back(DELIMITER);
   return tmp;
@@ -200,15 +215,17 @@ int IncommingMidiBody::get_device_index() {
   }
 }
 
-OutgoingMidiBody::OutgoingMidiBody(std::byte device,
-                                   std::vector<libremidi::message> messages)
+OutgoingMidiBody::OutgoingMidiBody(
+    std::byte device, const std::vector<libremidi::message> &messages)
     : Body(Body::Type::OutgoingMidi, 0), m_device(device),
       m_messages(messages) {
-  m_size += BODY_HEADER_SIZE;
-  m_size += 3;
-  for (auto &it : m_messages) {
-    m_size += it.size();
+  size_t tmp_size = 0;
+  tmp_size += BODY_HEADER_SIZE;
+  tmp_size += 3;
+  for (auto &iter : m_messages) {
+    tmp_size += iter.size();
   }
+  set_size(tmp_size);
 }
 
 OutgoingMidiBody::OutgoingMidiBody(std::byte buffer[], size_t size,
@@ -236,12 +253,15 @@ OutgoingMidiBody::OutgoingMidiBody(std::byte buffer[], size_t size,
     case 3:
       for (int j = 0; j < nr_of_messages; j++) {
         m_messages.push_back(libremidi::message(
-            {(unsigned char)*current_byte, (unsigned char)*(current_byte + 1),
-             (unsigned char)*(current_byte + 2)}));
+            {static_cast<unsigned char>(*current_byte),
+             static_cast<unsigned char>(*(current_byte + 1)),
+             static_cast<unsigned char>(*(current_byte + 2))}));
         current_byte += 3;
         bytes_read += 3;
       }
       return;
+    default:
+      throw std::out_of_range("Unexpected step handled");
     }
     bytes_read++;
     current_byte++;
@@ -255,8 +275,8 @@ std::vector<std::byte> OutgoingMidiBody::serialize() {
   tmp.push_back(m_device);
   tmp.push_back(DELIMITER);
   tmp.push_back(std::byte(m_messages.size()));
-  for (auto &it : m_messages) {
-    for (auto &itt : it) {
+  for (auto &iter : m_messages) {
+    for (auto &itt : iter) {
       tmp.push_back(std::byte(itt));
     }
   }
@@ -285,7 +305,7 @@ SysExMidiBody::SysExMidiBody(std::byte buffer[], size_t size, int &bytes_read)
       sysex_length = (int)*current_byte;
       step++;
       break;
-    case 4:
+    case 4: {
       libremidi::midi_bytes tmp_midi;
       for (int j = 0; j < sysex_length; j++) {
         tmp_midi.push_back((unsigned char)*current_byte);
@@ -293,7 +313,10 @@ SysExMidiBody::SysExMidiBody(std::byte buffer[], size_t size, int &bytes_read)
         current_byte++;
       }
       m_message.bytes = tmp_midi;
+    }
       return;
+    default:
+      throw std::out_of_range("Unexpected step handled");
     }
     bytes_read++;
     current_byte++;
@@ -308,8 +331,8 @@ std::vector<std::byte> SysExMidiBody::serialize() {
   tmp.push_back(DELIMITER);
   tmp.push_back(std::byte(m_message.size()));
   tmp.push_back(DELIMITER);
-  for (auto &it : m_message) {
-    tmp.push_back(std::byte(it));
+  for (auto &iter : m_message) {
+    tmp.push_back(std::byte(iter));
   }
   return tmp;
 }
@@ -341,5 +364,4 @@ std::vector<std::byte> UnkownBody::serialize() {
   tmp.insert(tmp.end(), m_content.begin(), m_content.end());
   return tmp;
 }
-} // namespace tcp
-} // namespace sls3mcubridge
+} // namespace sls3mcubridge::tcp
