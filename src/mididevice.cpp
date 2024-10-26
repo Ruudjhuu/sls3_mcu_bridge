@@ -4,7 +4,6 @@
 
 #include "libremidi/libremidi.hpp"
 #include "libremidi/message.hpp"
-#include "spdlog/spdlog.h"
 
 #include "mididevice.hpp"
 
