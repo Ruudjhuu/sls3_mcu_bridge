@@ -1,6 +1,16 @@
 
 # Dependencies
 
+# cxxopts
+include(FetchContent)
+
+FetchContent_Declare(
+  cxxopts
+  GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
+  GIT_TAG        v3.2.1
+)
+FetchContent_MakeAvailable(cxxopts)
+
 # libremidi
 include(FetchContent)
 
@@ -39,4 +49,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME}_lib PUBLIC libremidi asio fmt)
 # Executable
 add_executable(${CMAKE_PROJECT_NAME})
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE main.cpp)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_PROJECT_NAME}_lib)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_PROJECT_NAME}_lib cxxopts)

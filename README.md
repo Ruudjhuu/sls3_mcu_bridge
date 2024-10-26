@@ -5,10 +5,16 @@ sls3_mcu_bridge is a cli tool created to enable "DAW control" of the "Presonus S
 ## Usage
 ### Start Bridge
 - Connect your Presonus Studio Live Series III with the `controll` ethernet port to your network.
-- Get the ip address from the mixer by opening the `UCNET` menu using the `UCNET` button on the mixer.
-![alt text](images/sls3_ucnet.png)
+- get the hostname or ip address of the mixer.
+  - hostname
+    - In my case `StudioLive`, you can check your router dns leases.
+  - ip address
+    - Get the ip address from the mixer by opening the `UCNET` menu using the `UCNET` button on the mixer.
+    ![alt text](images/sls3_ucnet.png)
 - Start the bridge by executing:
- `sls3_mcu_bridge -h <ip_address>`
+ `sls3_mcu_bridge <ip_address_or_hostname>`
+ eg.
+ `sls3_mcu_bridge StudioLive`
 
 ### Connect in DAW
 #### Ardour
@@ -23,7 +29,7 @@ sls3_mcu_bridge is a cli tool created to enable "DAW control" of the "Presonus S
   - 16 faders -> Mackie Control with One Extender
   - 24 faders -> Mackie Control with Two Extenders
 - Select the correct MIDI send and receive ports
-  - positon 1 = MAIN
+  - position 1 = MAIN
   - position 2 = EXT1
   - position 3 = EXT2
 
@@ -40,7 +46,7 @@ cmake ..
 cmake --build .
 
 #use the bridge
-./bin/sls3_mcu_bridge <options>
+./bin/sls3_mcu_bridge <ip_address>
 ```
 
 ## Confirmed Devices
