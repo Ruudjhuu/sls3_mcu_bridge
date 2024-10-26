@@ -2,11 +2,10 @@
 #include <exception>
 #include <iostream>
 #include <memory>
-#include <spdlog/common.h>
-#include <spdlog/spdlog.h>
 
 #include "asio/io_context.hpp"
 #include "cxxopts.hpp"
+#include "spdlog/spdlog.h"
 
 #include "bridge.hpp"
 

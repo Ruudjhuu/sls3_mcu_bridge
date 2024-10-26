@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <exception>
 #include <functional>
-#include <spdlog/spdlog.h>
 #include <string>
 #include <sys/types.h>
 
@@ -12,6 +11,7 @@
 #include "asio/connect.hpp"
 #include "asio/ip/tcp.hpp"
 #include "asio/placeholders.hpp"
+#include "spdlog/spdlog.h"
 
 #include "package.hpp"
 
