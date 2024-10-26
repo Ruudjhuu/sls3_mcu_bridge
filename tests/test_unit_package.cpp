@@ -1,31 +1,30 @@
 
 #include "gtest/gtest.h"
+#include <array>
 #include <cstddef>
+#include <vector>
 
 #include "libremidi/message.hpp"
 #include "package.hpp"
 
-namespace sls3mcubridge {
-namespace tcp {
+namespace sls3mcubridge::tcp {
 
 TEST(TestTcpPackageCreation, testIncommingmidibodyCreateByBuffer) {
-  const size_t size = 10;
-  std::byte input[size] = {std::byte(0x4d), std::byte(0x4d), std::byte(0x00),
-                           std::byte(0x00), std::byte(0x6c), std::byte(0x00),
-                           std::byte(0x90), std::byte(0x10), std::byte(0x7f),
-                           std::byte(0x00)};
-  int read_bytes = 0;
+  std::array<std::byte, 10> input = {
+      std::byte(0x4d), std::byte(0x4d), std::byte(0x00), std::byte(0x00),
+      std::byte(0x6c), std::byte(0x00), std::byte(0x90), std::byte(0x10),
+      std::byte(0x7f), std::byte(0x00)};
 
-  auto body = Body::create(input, size, read_bytes);
+  auto body = Body::create(BufferView(input.begin(), input.end()));
 
   ASSERT_EQ(body->get_type(), Body::Type::IncommingMidi);
-  ASSERT_EQ(std::vector<std::byte>(input, input + size), body->serialize());
-  ASSERT_EQ(read_bytes, size);
+  ASSERT_EQ(std::vector<std::byte>(input.begin(), input.end()),
+            body->serialize());
+  ASSERT_EQ(body->get_size(), input.size());
 }
 
 TEST(TestTcpPackageCreation, testIncommingmidibodyCreateByArgs) {
-  const size_t size = 10;
-  std::byte expected_output[size] = {
+  std::vector<std::byte> expected_output = {
       std::byte(0x4d), std::byte(0x4d), std::byte(0x00), std::byte(0x00),
       std::byte(0x6c), std::byte(0x00), std::byte(0x90), std::byte(0x10),
       std::byte(0x7f), std::byte(0x00)};
@@ -36,14 +35,12 @@ TEST(TestTcpPackageCreation, testIncommingmidibodyCreateByArgs) {
   auto body = IncommingMidiBody(device, message);
 
   ASSERT_EQ(body.get_type(), Body::Type::IncommingMidi);
-  ASSERT_EQ(std::vector<std::byte>(expected_output, expected_output + size),
-            body.serialize());
-  ASSERT_EQ(body.get_size(), size);
+  ASSERT_EQ(expected_output, body.serialize());
+  ASSERT_EQ(body.get_size(), expected_output.size());
 }
 
 TEST(TestTcpPackageCreation, testOutgoingmidibodyCreateByBuffer) {
-  const size_t size = 52;
-  std::byte input[size] = {
+  std::array<std::byte, 52> input = {
       std::byte(0x4d), std::byte(0x41), std::byte(0x00), std::byte(0x00),
       std::byte(0x68), std::byte(0x00), std::byte(0x0f), std::byte(0xb0),
       std::byte(0x40), std::byte(0x30), std::byte(0xb0), std::byte(0x41),
@@ -57,20 +54,17 @@ TEST(TestTcpPackageCreation, testOutgoingmidibodyCreateByBuffer) {
       std::byte(0xb0), std::byte(0x4a), std::byte(0x30), std::byte(0xb0),
       std::byte(0x30), std::byte(0x30), std::byte(0xb0), std::byte(0x31),
       std::byte(0x30), std::byte(0xb0), std::byte(0x32), std::byte(0x30)};
-  int read_bytes = 0;
 
-  auto body = Body::create(input, size, read_bytes);
+  auto body = Body::create(BufferView(input.begin(), input.end()));
 
   ASSERT_EQ(body->get_type(), Body::Type::OutgoingMidi);
-  ASSERT_EQ(std::vector<std::byte>(input, input + size).size(),
-            body->serialize().size());
-  ASSERT_EQ(std::vector<std::byte>(input, input + size), body->serialize());
-  ASSERT_EQ(read_bytes, size);
+  ASSERT_EQ(std::vector<std::byte>(input.begin(), input.end()),
+            body->serialize());
+  ASSERT_EQ(body->get_size(), input.size());
 }
 
 TEST(TestTcpPackageCreation, testOutgoingmidibodyCreateByArgs) {
-  const size_t size = 13;
-  std::byte expected_output[size] = {
+  std::vector<std::byte> expected_output = {
       std::byte(0x4d), std::byte(0x41), std::byte(0x00), std::byte(0x00),
       std::byte(0x68), std::byte(0x00), std::byte(0x02), std::byte(0xb0),
       std::byte(0x40), std::byte(0x30), std::byte(0xb0), std::byte(0x41),
@@ -83,30 +77,28 @@ TEST(TestTcpPackageCreation, testOutgoingmidibodyCreateByArgs) {
   auto body = OutgoingMidiBody(device, messages);
 
   ASSERT_EQ(body.get_type(), Body::Type::OutgoingMidi);
-  ASSERT_EQ(std::vector<std::byte>(expected_output, expected_output + size),
-            body.serialize());
-  ASSERT_EQ(body.get_size(), size);
+  ASSERT_EQ(expected_output, body.serialize());
+  ASSERT_EQ(body.get_size(), expected_output.size());
 }
 
 TEST(TestTcpPackageCreation, testSysexmidibodyCreateByBuffer) {
-  const size_t size = 15;
-  std::byte input[size] = {std::byte(0x53), std::byte(0x53), std::byte(0x00),
-                           std::byte(0x00), std::byte(0x68), std::byte(0x00),
-                           std::byte(0x07), std::byte(0x00), std::byte(0xf0),
-                           std::byte(0x00), std::byte(0x00), std::byte(0x66),
-                           std::byte(0x15), std::byte(0x00), std::byte(0xf7)};
+  std::array<std::byte, 15> input = {
+      std::byte(0x53), std::byte(0x53), std::byte(0x00), std::byte(0x00),
+      std::byte(0x68), std::byte(0x00), std::byte(0x07), std::byte(0x00),
+      std::byte(0xf0), std::byte(0x00), std::byte(0x00), std::byte(0x66),
+      std::byte(0x15), std::byte(0x00), std::byte(0xf7)};
   int read_bytes = 0;
 
-  auto body = Body::create(input, size, read_bytes);
+  auto body = Body::create(BufferView(input.begin(), input.end()));
 
   ASSERT_EQ(body->get_type(), Body::Type::SysEx);
-  ASSERT_EQ(std::vector<std::byte>(input, input + size), body->serialize());
-  ASSERT_EQ(read_bytes, size);
+  ASSERT_EQ(std::vector<std::byte>(input.begin(), input.end()),
+            body->serialize());
+  ASSERT_EQ(body->get_size(), input.size());
 }
 
 TEST(TestTcpPackageCreation, testSysexmidibodyCreateByArgs) {
-  const size_t size = 15;
-  std::byte expected_output[size] = {
+  std::vector<std::byte> expected_output = {
       std::byte(0x53), std::byte(0x53), std::byte(0x00), std::byte(0x00),
       std::byte(0x68), std::byte(0x00), std::byte(0x07), std::byte(0x00),
       std::byte(0xf0), std::byte(0x00), std::byte(0x00), std::byte(0x66),
@@ -117,55 +109,52 @@ TEST(TestTcpPackageCreation, testSysexmidibodyCreateByArgs) {
   auto body = SysExMidiBody(device, message);
 
   ASSERT_EQ(body.get_type(), Body::Type::SysEx);
-  ASSERT_EQ(std::vector<std::byte>(expected_output, expected_output + size),
-            body.serialize());
-  ASSERT_EQ(body.get_size(), size);
+  ASSERT_EQ(expected_output, body.serialize());
+  ASSERT_EQ(body.get_size(), expected_output.size());
 }
 
 TEST(TestTcpPackageCreation, testUnkownbodyCreateByBuffer) {
-  const size_t size = 10;
-  std::byte input[size] = {std::byte(0x3d), std::byte(0x4d), std::byte(0x00),
-                           std::byte(0x00), std::byte(0x6c), std::byte(0x00),
-                           std::byte(0x90), std::byte(0x10), std::byte(0x7f),
-                           std::byte(0x00)};
-  int read_bytes = 0;
+  std::array<std::byte, 10> input = {
+      std::byte(0x3d), std::byte(0x4d), std::byte(0x00), std::byte(0x00),
+      std::byte(0x6c), std::byte(0x00), std::byte(0x90), std::byte(0x10),
+      std::byte(0x7f), std::byte(0x00)};
 
-  auto body = Body::create(input, size, read_bytes);
+  auto body = Body::create(BufferView(input.begin(), input.end()));
 
   // unkown body type is set to 0
   input[0] = std::byte(0);
   input[1] = std::byte(0);
 
   ASSERT_EQ(body->get_type(), Body::Type::Unkown);
-  ASSERT_EQ(std::vector<std::byte>(input, input + size), body->serialize());
-  ASSERT_EQ(read_bytes, size);
+  ASSERT_EQ(std::vector<std::byte>(input.begin(), input.end()),
+            body->serialize());
+  ASSERT_EQ(body->get_size(), input.size());
 }
 
 TEST(TestTcpPackageCreation, testHeaderSerialization) {
   const size_t size = 6;
-  std::byte input[size] = {std::byte('U'),  std::byte('C'),  std::byte(0x00),
-                           std::byte(0x01), std::byte(0x0a), std::byte(0x00)};
+  std::array<std::byte, 6> input = {std::byte('U'),  std::byte('C'),
+                                    std::byte(0x00), std::byte(0x01),
+                                    std::byte(0x0a), std::byte(0x00)};
 
-  int read_bytes = 0;
-  auto output = Header(input, read_bytes);
+  auto output = Header(BufferView(input.begin(), input.end()));
 
-  ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
-  ASSERT_EQ(read_bytes, size);
+  ASSERT_EQ(std::vector<std::byte>(input.begin(), input.end()),
+            output.serialize());
 }
 
 TEST(TestTcpPackageCreation, testHeaderCreateByArg) {
-  const size_t size = 6;
-  std::byte input[size] = {std::byte('U'),  std::byte('C'),  std::byte(0x00),
-                           std::byte(0x01), std::byte(0x0a), std::byte(0x00)};
+  std::vector<std::byte> expected_output = {std::byte('U'),  std::byte('C'),
+                                            std::byte(0x00), std::byte(0x01),
+                                            std::byte(0x0a), std::byte(0x00)};
 
   auto output = Header(10);
 
-  ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
+  ASSERT_EQ(expected_output, output.serialize());
 }
 
 TEST(TestTcpPackageCreation, testPackageSerialization) {
-  const size_t size = 16;
-  std::byte input[size] = {
+  std::array<std::byte, 16> input = {
       std::byte('U'),  std::byte('C'),  std::byte(0x00), std::byte(0x01),
       std::byte(0x0a), std::byte(0x00), std::byte(0x4d), std::byte(0x4d),
       std::byte(0x00), std::byte(0x00), std::byte(0x6c), std::byte(0x00),
@@ -173,9 +162,9 @@ TEST(TestTcpPackageCreation, testPackageSerialization) {
   };
 
   int bytes_read = 0;
-  auto output = Package(input, bytes_read);
-  ASSERT_EQ(std::vector<std::byte>(input, input + size), output.serialize());
-  ASSERT_EQ(bytes_read, size);
+  auto output = Package(BufferView(input.begin(), input.end()));
+  ASSERT_EQ(std::vector<std::byte>(input.begin(), input.end()),
+            output.serialize());
+  ASSERT_EQ(output.get_size(), input.size());
 }
-} // namespace tcp
-} // namespace sls3mcubridge
+} // namespace sls3mcubridge::tcp

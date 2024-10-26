@@ -13,22 +13,20 @@ namespace sls3mcubridge::tcp {
 
 const std::byte DELIMITER = std::byte(0x0);
 
-Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
+Header::Header(BufferView<std::byte *> buffer_view) : m_body_size(0) {
   bool break_loop = false;
   int step = 0;
-  std::byte *current_byte = buffer;
-  for (int i = 0; i < HEADER_SIZE; i++) {
-
+  for (const auto &iter : buffer_view) {
     switch (step) {
     // Header UC
     case 0:
-      if (*current_byte != HEADEr_FIRST_BYTE) {
+      if (iter != HEADEr_FIRST_BYTE) {
         throw std::invalid_argument("expected first byte to be 'U'");
       }
       step++;
       break;
     case 1:
-      if (*current_byte != HEADER_SECOND_BYTE) {
+      if (iter != HEADER_SECOND_BYTE) {
         throw std::invalid_argument("expected first byte to be 'C'");
       }
       step++;
@@ -36,7 +34,7 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
 
     // Delimiter
     case 2:
-      if (*current_byte != DELIMITER) {
+      if (iter != DELIMITER) {
         throw std::invalid_argument("Expected delimiter in step " +
                                     std::to_string(step));
       }
@@ -45,7 +43,7 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
 
     // unkown
     case 3:
-      if (*current_byte != HEADER_UNKOWN_BYTE) {
+      if (iter != HEADER_UNKOWN_BYTE) {
         throw std::invalid_argument("Expected 0x01 in step " +
                                     std::to_string(step));
       }
@@ -54,13 +52,13 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
 
     // body size
     case 4:
-      m_body_size = std::to_integer<size_t>(*current_byte);
+      m_body_size = std::to_integer<size_t>(iter);
       step++;
       break;
 
     // delimiter
     case 5:
-      if (*current_byte != DELIMITER) {
+      if (iter != DELIMITER) {
         throw std::invalid_argument("Expected delimiter in step " +
                                     std::to_string(step));
       }
@@ -69,8 +67,6 @@ Header::Header(std::byte buffer[], int &bytes_read) : m_body_size(4) {
     default:
       throw std::out_of_range("Unexpected step handled");
     }
-    bytes_read++;
-    current_byte++;
   }
 }
 
@@ -85,24 +81,23 @@ std::vector<std::byte> Header::serialize() {
   return buffer;
 }
 
-std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
-                                   int &bytes_read) {
+std::shared_ptr<Body> Body::create(BufferView<std::byte *> buffer_view) {
   int step = 0;
   uint16_t type_int = 0;
-  std::byte *byte = buffer;
+  auto iter = buffer_view.begin();
   for (int i = 0; i < BODY_HEADER_SIZE; i++) {
     switch (step) {
     case 0:
-      type_int = static_cast<uint16_t>(*byte) << (sizeof(*byte) * CHAR_BIT);
+      type_int = static_cast<uint16_t>(*iter) << (sizeof(*iter) * CHAR_BIT);
       step++;
       break;
     case 1:
-      type_int |= static_cast<uint16_t>(*byte);
+      type_int |= static_cast<uint16_t>(*iter);
       step++;
       break;
     case 2:
     case 3:
-      if (*byte != DELIMITER) {
+      if (*iter != DELIMITER) {
         throw std::invalid_argument("Expected delimiter at step " +
                                     std::to_string(step));
       }
@@ -111,10 +106,8 @@ std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
     default:
       throw std::out_of_range("Unexpected step handled");
     }
-    byte++;
-    bytes_read++;
+    iter++;
   }
-
   Type type = Type::Unkown;
   try {
     type = int16_to_type_map.at(type_int);
@@ -122,17 +115,17 @@ std::shared_ptr<Body> Body::create(std::byte buffer[], size_t body_size,
     type = Type::Unkown;
   }
 
-  size_t sub_body_size = body_size - BODY_HEADER_SIZE;
+  auto sub_body_view = BufferView(iter, buffer_view.end());
 
   switch (type) {
   case Type::IncommingMidi:
-    return std::make_shared<IncommingMidiBody>(byte, sub_body_size, bytes_read);
+    return std::make_shared<IncommingMidiBody>(sub_body_view);
   case Type::OutgoingMidi:
-    return std::make_shared<OutgoingMidiBody>(byte, sub_body_size, bytes_read);
+    return std::make_shared<OutgoingMidiBody>(sub_body_view);
   case Type::SysEx:
-    return std::make_shared<SysExMidiBody>(byte, sub_body_size, bytes_read);
+    return std::make_shared<SysExMidiBody>(sub_body_view);
   case Type::Unkown:
-    return std::make_shared<UnkownBody>(byte, sub_body_size, bytes_read);
+    return std::make_shared<UnkownBody>(sub_body_view);
   }
 }
 
@@ -157,36 +150,30 @@ uint16_t Body::find_type_in_map(Type type) {
   return 0;
 }
 
-IncommingMidiBody::IncommingMidiBody(std::byte buffer[], size_t size,
-                                     int &bytes_read)
-    : Body(Body::Type::IncommingMidi, size) {
+IncommingMidiBody::IncommingMidiBody(BufferView<std::byte *> buffer_view)
+    : Body(Body::Type::IncommingMidi,
+           BODY_HEADER_SIZE + buffer_view.distance()) {
   int step = 0;
-  std::byte *current_byte = buffer;
-  for (int i = 0; i < size; i++) {
+  for (auto iter : buffer_view) {
     switch (step) {
     case 0:
-      m_device = *current_byte;
+      m_device = iter;
       step++;
       break;
     case 1:
-    case 3:
-      if (*current_byte != DELIMITER) {
+      if (iter != DELIMITER) {
         throw std::invalid_argument("Delimiter expected");
       }
       step++;
       break;
     case 2:
-      if (i == size - 1) {
-        break;
-      }
-      m_message.bytes.push_back(static_cast<unsigned char>(*current_byte));
+      m_message.bytes.push_back(static_cast<unsigned char>(iter));
       break;
     default:
       throw std::out_of_range("Unexpected step handled");
     }
-    bytes_read++;
-    current_byte++;
   }
+  m_message.bytes.pop_back();
 }
 
 std::vector<std::byte> IncommingMidiBody::serialize() {
@@ -228,43 +215,40 @@ OutgoingMidiBody::OutgoingMidiBody(
   set_size(tmp_size);
 }
 
-OutgoingMidiBody::OutgoingMidiBody(std::byte buffer[], size_t size,
-                                   int &bytes_read)
-    : Body(Body::Type::OutgoingMidi, size) {
+OutgoingMidiBody::OutgoingMidiBody(BufferView<std::byte *> buffer_view)
+    : Body(Body::Type::OutgoingMidi,
+           BODY_HEADER_SIZE + buffer_view.distance()) {
   int step = 0;
   int nr_of_messages = 0;
-  std::byte *current_byte = buffer;
-  for (int i = 0; i < size; i++) {
+  int midi_message_location = 0;
+  libremidi::midi_bytes tmp_midi_bytes;
+
+  for (const auto &iter : buffer_view) {
     switch (step) {
     case 0:
-      m_device = *current_byte;
+      m_device = iter;
       step++;
       break;
     case 1:
-      if (*current_byte != DELIMITER) {
+      if (iter != DELIMITER) {
         throw std::invalid_argument("Delimiter expected");
       }
       step++;
       break;
     case 2:
-      nr_of_messages = (int)*current_byte;
+      nr_of_messages = static_cast<int>(iter);
       step++;
       break;
     case 3:
-      for (int j = 0; j < nr_of_messages; j++) {
-        m_messages.push_back(libremidi::message(
-            {static_cast<unsigned char>(*current_byte),
-             static_cast<unsigned char>(*(current_byte + 1)),
-             static_cast<unsigned char>(*(current_byte + 2))}));
-        current_byte += 3;
-        bytes_read += 3;
+      tmp_midi_bytes.push_back(static_cast<unsigned char>(iter));
+      if (tmp_midi_bytes.size() == 3) {
+        m_messages.emplace_back(tmp_midi_bytes, 0);
+        tmp_midi_bytes.clear();
       }
-      return;
+      break;
     default:
       throw std::out_of_range("Unexpected step handled");
     }
-    bytes_read++;
-    current_byte++;
   }
 }
 
@@ -283,43 +267,34 @@ std::vector<std::byte> OutgoingMidiBody::serialize() {
   return tmp;
 }
 
-SysExMidiBody::SysExMidiBody(std::byte buffer[], size_t size, int &bytes_read)
-    : Body(Body::Type::SysEx, size) {
+SysExMidiBody::SysExMidiBody(BufferView<std::byte *> buffer_view)
+    : Body(Body::Type::SysEx, BODY_HEADER_SIZE + buffer_view.distance()) {
   int step = 0;
-  int sysex_length = 0;
-  std::byte *current_byte = buffer;
-  for (int i = 0; i < size; i++) {
+  size_t sysex_length = 0;
+  for (const auto &iter : buffer_view) {
     switch (step) {
     case 0:
-      m_device = *current_byte;
+      m_device = iter;
       step++;
       break;
     case 1:
     case 3:
-      if (*current_byte != DELIMITER) {
+      if (iter != DELIMITER) {
         throw std::invalid_argument("Delimiter expected");
       }
       step++;
       break;
     case 2:
-      sysex_length = (int)*current_byte;
+      sysex_length = static_cast<size_t>(iter);
       step++;
       break;
     case 4: {
-      libremidi::midi_bytes tmp_midi;
-      for (int j = 0; j < sysex_length; j++) {
-        tmp_midi.push_back((unsigned char)*current_byte);
-        bytes_read++;
-        current_byte++;
-      }
-      m_message.bytes = tmp_midi;
-    }
-      return;
+      m_message.bytes.push_back(static_cast<unsigned char>(iter));
+      break;
     default:
       throw std::out_of_range("Unexpected step handled");
     }
-    bytes_read++;
-    current_byte++;
+    }
   }
 }
 
@@ -337,24 +312,19 @@ std::vector<std::byte> SysExMidiBody::serialize() {
   return tmp;
 }
 
-Package::Package(std::byte buffer[], int &bytes_read)
-    : m_header(buffer, bytes_read),
-      m_body(Body::create(buffer + bytes_read, m_header.get_body_size(),
-                          bytes_read)) {}
+Package::Package(BufferView<std::byte *> buffer_view)
+    : m_header(
+          BufferView(buffer_view.begin(), buffer_view.begin() + HEADER_SIZE)),
+      m_body(Body::create(
+          BufferView(buffer_view.begin() + HEADER_SIZE,
+                     buffer_view.begin() + HEADER_SIZE +
+                         static_cast<int64_t>(m_header.get_body_size())))) {}
 
 std::vector<std::byte> Package::serialize() {
   std::vector<std::byte> tmp = m_header.serialize();
   auto body_vec = m_body->serialize();
   tmp.insert(tmp.end(), body_vec.begin(), body_vec.end());
   return tmp;
-}
-
-UnkownBody::UnkownBody(std::byte buffer[], size_t size, int &bytes_read)
-    : Body(Body::Type::Unkown, size) {
-  for (int i = 0; i < size; i++) {
-    m_content.push_back(buffer[i]);
-    bytes_read++;
-  }
 }
 
 std::vector<std::byte> UnkownBody::serialize() {

@@ -3,6 +3,7 @@
 #include "libremidi/message.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <vector>
@@ -14,6 +15,20 @@ const int HEADER_SIZE = 6;
 const std::byte HEADEr_FIRST_BYTE = std::byte('U');
 const std::byte HEADER_SECOND_BYTE = std::byte('C');
 const std::byte HEADER_UNKOWN_BYTE = std::byte(0x01);
+
+template <class Iterator> class BufferView {
+
+public:
+  BufferView(Iterator begin, Iterator end) : m_begin(begin), m_end(end) {}
+  size_t distance() { return std::distance(m_begin, m_end); }
+  [[nodiscard]] Iterator begin() const { return m_begin; }
+  [[nodiscard]] Iterator end() const { return m_end; }
+
+private:
+  Iterator m_begin;
+  Iterator m_end;
+};
+
 class ISerialize {
 public:
   virtual ~ISerialize() = default;
@@ -30,9 +45,9 @@ protected:
 
 class Header : public ISerialize {
 public:
+  explicit Header(BufferView<std::byte *> buffer_view);
   explicit Header(size_t body_size)
       : m_body_size(static_cast<uint8_t>(body_size)) {}
-  Header(std::byte buffer[], int &bytes_read);
   std::vector<std::byte> serialize() override;
   size_t get_body_size() const { return m_body_size; }
 
@@ -56,8 +71,7 @@ public:
       {19777, Type::OutgoingMidi},
       {21331, Type::SysEx}};
 
-  static std::shared_ptr<Body> create(std::byte buffer[], size_t body_size,
-                                      int &bytes_read);
+  static std::shared_ptr<Body> create(BufferView<std::byte *> buffer_view);
   [[nodiscard]] const Type &get_type() const { return m_type; }
   [[nodiscard]] const size_t &get_size() const { return m_size; }
 
@@ -78,7 +92,7 @@ public:
   IncommingMidiBody(const std::byte device, const libremidi::message &message)
       : Body(Body::Type::IncommingMidi, BODY_HEADER_SIZE + 3 + message.size()),
         m_device(device), m_message(message) {}
-  IncommingMidiBody(std::byte buffer[], size_t size, int &bytes_read);
+  explicit IncommingMidiBody(BufferView<std::byte *> buffer_view);
   std::vector<std::byte> serialize() override;
   int get_device_index();
   libremidi::message &get_message() { return m_message; }
@@ -92,7 +106,7 @@ class OutgoingMidiBody : public Body {
 public:
   OutgoingMidiBody(std::byte device,
                    const std::vector<libremidi::message> &message);
-  OutgoingMidiBody(std::byte buffer[], size_t size, int &bytes_read);
+  explicit OutgoingMidiBody(BufferView<std::byte *> buffer_view);
   std::vector<std::byte> serialize() override;
   int get_device_index();
   const std::vector<libremidi::message> &get_messages() { return m_messages; }
@@ -107,7 +121,7 @@ public:
   SysExMidiBody(std::byte device, const libremidi::message &message)
       : Body(Body::Type::SysEx, BODY_HEADER_SIZE + 4 + message.size()),
         m_device(device), m_message(message) {}
-  SysExMidiBody(std::byte buffer[], size_t size, int &bytes_read);
+  explicit SysExMidiBody(BufferView<std::byte *> buffer_view);
   std::vector<std::byte> serialize() override;
   int get_device_index();
   const libremidi::message &get_message() { return m_message; }
@@ -119,7 +133,9 @@ private:
 
 class UnkownBody : public Body {
 public:
-  UnkownBody(std::byte buffer[], size_t size, int &bytes_read);
+  explicit UnkownBody(BufferView<std::byte *> buffer_view)
+      : Body(Body::Type::Unkown, BODY_HEADER_SIZE + buffer_view.distance()),
+        m_content(buffer_view.begin(), buffer_view.end()) {}
   std::vector<std::byte> serialize() override;
   std::vector<std::byte> get_content() { return m_content; }
 
@@ -129,11 +145,12 @@ private:
 
 class Package : ISerialize {
 public:
+  explicit Package(BufferView<std::byte *> buffer_view);
   explicit Package(std::shared_ptr<Body> &body)
       : m_body(body), m_header(body->get_size()) {}
-  Package(std::byte buffer[], int &bytes_read);
   std::vector<std::byte> serialize() override;
   std::shared_ptr<Body> get_body() { return m_body; }
+  size_t get_size() const { return HEADER_SIZE + m_body->get_size(); }
 
 private:
   Header m_header;

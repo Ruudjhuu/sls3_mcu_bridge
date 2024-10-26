@@ -2,11 +2,13 @@
 #include "client.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <format>
 #include <functional>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <sys/types.h>
 
 #include "asio/buffer.hpp"
 #include "asio/connect.hpp"
@@ -36,21 +38,24 @@ void Client::write(const asio::const_buffer &message) {
 void Client::start_reading(
     const std::function<void(tcp::Package &)> &callback) {
   m_read_callback = callback;
-  m_socket.async_read_some(asio::buffer(m_buffer),
+  m_socket.async_read_some(asio::buffer(m_buffer2),
                            std::bind(&Client::read_handler, shared_from_this(),
                                      asio::placeholders::error,
                                      asio::placeholders::bytes_transferred));
 }
 
 void Client::read_handler(const asio::error_code &error,
-                          std::size_t bytes_transferred) {
+                          size_t bytes_transferred) {
   if (!error) {
     spdlog::info("handle message");
     try {
-      int bytes_read = 0;
+      size_t bytes_read = 0;
       while (bytes_read < bytes_transferred) {
-        auto package = tcp::Package(m_buffer, bytes_read);
+        auto package = tcp::Package(tcp::BufferView(
+            m_buffer2.begin(), (m_buffer2.begin() + bytes_transferred)));
+
         m_read_callback(package);
+        bytes_read += package.get_size();
       }
     } catch (const std::exception &exc) {
       spdlog::warn(std::format("TCP read parse failure: {}", exc.what()));
