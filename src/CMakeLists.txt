@@ -55,7 +55,7 @@ add_library(${CMAKE_PROJECT_NAME}_lib
   bridge.cpp bridge.hpp
   mididevice.cpp mididevice.hpp)
 
-target_link_libraries(${CMAKE_PROJECT_NAME}_lib PUBLIC libremidi asio fmt spdlog)
+target_link_libraries(${CMAKE_PROJECT_NAME}_lib PUBLIC libremidi asio spdlog)
 
 # Executable
 add_executable(${CMAKE_PROJECT_NAME})
