@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace sls3mcubridge::tcp {
@@ -52,7 +53,7 @@ Header::Header(BufferView<std::byte *> buffer_view) : m_body_size(0) {
 
     // body size
     case 4:
-      m_body_size = std::to_integer<size_t>(iter);
+      m_body_size = std::to_integer<uint8_t>(iter);
       step++;
       break;
 
