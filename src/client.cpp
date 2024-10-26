@@ -2,9 +2,7 @@
 #include "client.hpp"
 
 #include <cstddef>
-#include <cstdint>
 #include <exception>
-#include <format>
 #include <functional>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -58,7 +56,7 @@ void Client::read_handler(const asio::error_code &error,
         bytes_read += package.get_size();
       }
     } catch (const std::exception &exc) {
-      spdlog::warn(std::format("TCP read parse failure: {}", exc.what()));
+      spdlog::warn("TCP read parse failure: {}" + std::string(exc.what()));
     }
   } else {
     spdlog::error("failed to read incomming TCP message");
