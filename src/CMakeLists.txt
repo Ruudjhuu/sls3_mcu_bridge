@@ -28,15 +28,15 @@ target_link_libraries(asio INTERFACE Threads::Threads)
 
 # Project library
 
-add_library(sls3_mcu_bridge_lib 
+add_library(${CMAKE_PROJECT_NAME}_lib 
   package.cpp package.hpp
   client.cpp client.hpp
   bridge.cpp bridge.hpp
   mididevice.cpp mididevice.hpp)
 
-target_link_libraries(sls3_mcu_bridge_lib PUBLIC libremidi asio fmt)
+target_link_libraries(${CMAKE_PROJECT_NAME}_lib PUBLIC libremidi asio fmt)
 
 # Executable
-add_executable(sls3_mcu_bridge)
-target_sources(sls3_mcu_bridge PRIVATE main.cpp)
-target_link_libraries(sls3_mcu_bridge PRIVATE sls3_mcu_bridge_lib)
+add_executable(${CMAKE_PROJECT_NAME})
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE main.cpp)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_PROJECT_NAME}_lib)

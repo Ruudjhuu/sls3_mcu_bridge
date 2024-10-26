@@ -13,5 +13,5 @@ include_directories(${COMMON_INCLUDES})
 
 add_executable(unit_tests 
   test_unit_package.cpp)
-target_link_libraries(unit_tests PRIVATE sls3_mcu_bridge_lib GTest::GTest)
+target_link_libraries(unit_tests PRIVATE ${CMAKE_PROJECT_NAME}_lib GTest::GTest)
 gtest_discover_tests(unit_tests)

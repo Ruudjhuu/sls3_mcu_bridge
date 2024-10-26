@@ -1,12 +1,14 @@
 #include "bridge.hpp"
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <ios>
 #include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "asio/buffer.hpp"
@@ -46,9 +48,11 @@ Bridge::Bridge(asio::io_context &io_context, const std::string &ip_address,
   tcp_client->connect(ip_address, port);
   send_init_messages();
 
-  midi_devices.push_back(std::make_shared<MidiDevice>("MAIN"));
-  midi_devices.push_back(std::make_shared<MidiDevice>("EXT1"));
-  midi_devices.push_back(std::make_shared<MidiDevice>("EXT2"));
+  midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_MAIN"));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_EXT1"));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_EXT2"));
 }
 
 void Bridge::start() {

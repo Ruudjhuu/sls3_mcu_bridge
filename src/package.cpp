@@ -125,6 +125,7 @@ std::shared_ptr<Body> Body::create(BufferView<std::byte *> buffer_view) {
   case Type::SysEx:
     return std::make_shared<SysExMidiBody>(sub_body_view);
   case Type::Unkown:
+  default:
     return std::make_shared<UnkownBody>(sub_body_view);
   }
 }
