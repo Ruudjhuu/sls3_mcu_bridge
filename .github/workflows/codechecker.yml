@@ -1,4 +1,4 @@
-name: CMake on multiple platforms
+name: Codechecker
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: ["master"]
 
 jobs:
-  codecheck:
+  codechecker:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,11 +25,13 @@ jobs:
       # Analyse
       - name: "Prepare build"
         run: |
+          cd build
           cmake --build . --target analyze
 
       # Create report
       - name: "Prepare build"
         run: |
+          cd build
           cmake --build . --target analyze_report
 
       # Upload the results to the CI.
@@ -37,4 +39,4 @@ jobs:
         if: ${{ failure() }}
         with:
           name: "CodeChecker Bug Reports"
-          path: ${{ github.workspace }}/.codechecker/html_report
+          path: ${{ github.workspace }}/build/codechecker_html_report
