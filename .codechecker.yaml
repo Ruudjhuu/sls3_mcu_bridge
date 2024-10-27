@@ -1,3 +1,4 @@
 analyzer:
   - --enable=sensitive
   - --enable=cppcoreguidelines
+  - --enable=modernize
