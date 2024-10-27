@@ -35,12 +35,10 @@ jobs:
 
       - name: "Analyze"
         run: |
-          cd build
           cmake --build ${{ steps.strings.outputs.build-output-dir }} --target analyze
 
       - name: "Create report"
         run: |
-          cd build
           cmake --build ${{ steps.strings.outputs.build-output-dir }} --target analyze_report
 
       - uses: actions/upload-artifact@v4
