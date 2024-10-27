@@ -22,24 +22,20 @@ jobs:
         run: |
           echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-      # Prepare a build
       - name: "Prepare build"
         run: |
-          mkdir -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      # Analyse
       - name: "Analyze"
         run: |
           cd build
           cmake --build ${{ steps.strings.outputs.build-output-dir }} --target analyze
 
-      # Create report
       - name: "Create report"
         run: |
           cd build
           cmake --build ${{ steps.strings.outputs.build-output-dir }} --target analyze_report
 
-      # Upload the results to the CI.
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
