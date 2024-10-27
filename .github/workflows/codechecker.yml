@@ -33,7 +33,7 @@ jobs:
           cmake --build . --target analyze_report
 
       # Upload the results to the CI.
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
           name: "CodeChecker Bug Reports"
