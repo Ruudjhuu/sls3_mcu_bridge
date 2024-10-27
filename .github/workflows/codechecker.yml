@@ -1,0 +1,40 @@
+name: CMake on multiple platforms
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  codecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check YOUR project out!
+      - name: "Check out repository"
+        uses: actions/checkout@v2
+
+      # Prepare a build
+      - name: "Prepare build"
+        run: |
+          mkdir -pv build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      # Analyse
+      - name: "Prepare build"
+        run: |
+          cmake --build . --target analyze
+
+      # Create report
+      - name: "Prepare build"
+        run: |
+          cmake --build . --target analyze_report
+
+      # Upload the results to the CI.
+      - uses: actions/upload-artifact@v2
+        if: ${{ failure() }}
+        with:
+          name: "CodeChecker Bug Reports"
+          path: ${{ github.workspace }}/.codechecker/html_report
