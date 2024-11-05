@@ -15,3 +15,4 @@ add_executable(unit_tests
   test_unit_package.cpp)
 target_link_libraries(unit_tests PRIVATE ${CMAKE_PROJECT_NAME}_lib GTest::GTest)
 gtest_discover_tests(unit_tests)
+set_property(TARGET unit_tests PROPERTY COMPILE_WARNING_AS_ERROR ON)

@@ -1,0 +1,44 @@
+name: Codechecker
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  codechecker:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check YOUR project out!
+      - name: "Check out repository"
+        uses: actions/checkout@v2
+
+      - name: Set reusable strings
+        # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+        id: strings
+        shell: bash
+        run: |
+          echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install codechecker
+        run: pip install CodeChecker
+
+      - name: "Prepare build"
+        run: |
+          cmake -B ${{ steps.strings.outputs.build-output-dir }} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: "Analyze"
+        run: |
+          cmake --build ${{ steps.strings.outputs.build-output-dir }} --target analyze
+
+      - name: "Create report"
+        # allow job to fail, there is a chance these checks are too invasive and to strict.
+        continue-on-error: true
+        run: |
+          cmake --build ${{ steps.strings.outputs.build-output-dir }} --target analyze_report

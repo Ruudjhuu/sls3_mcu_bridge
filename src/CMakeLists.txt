@@ -21,6 +21,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(libremidi)
 
+# spdlog
+include(FetchContent)
+
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG        v1.14.1
+)
+FetchContent_MakeAvailable(spdlog)
+
+
 # asio
 FetchContent_Declare(asio
   GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
@@ -43,10 +54,11 @@ add_library(${CMAKE_PROJECT_NAME}_lib
   client.cpp client.hpp
   bridge.cpp bridge.hpp
   mididevice.cpp mididevice.hpp)
-
-target_link_libraries(${CMAKE_PROJECT_NAME}_lib PUBLIC libremidi asio fmt)
+target_link_libraries(${CMAKE_PROJECT_NAME}_lib PUBLIC libremidi asio spdlog)
+set_property(TARGET ${CMAKE_PROJECT_NAME}_lib  PROPERTY COMPILE_WARNING_AS_ERROR ON)
 
 # Executable
 add_executable(${CMAKE_PROJECT_NAME})
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE main.cpp)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_PROJECT_NAME}_lib cxxopts)
+set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY COMPILE_WARNING_AS_ERROR ON)

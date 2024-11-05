@@ -148,7 +148,8 @@ TEST(TestTcpPackageCreation, testHeaderCreateByArg) {
                                             std::byte(0x00), std::byte(0x01),
                                             std::byte(0x0a), std::byte(0x00)};
 
-  auto output = Header(10);
+  auto output = Header();
+  output.set_body_size(10);
 
   ASSERT_EQ(expected_output, output.serialize());
 }
