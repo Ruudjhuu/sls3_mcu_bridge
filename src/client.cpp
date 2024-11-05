@@ -45,21 +45,26 @@ void Client::start_reading(
 void Client::read_handler(const asio::error_code &error,
                           size_t bytes_transferred) {
   if (!error) {
-    spdlog::info("handle message");
+    spdlog::debug("handle message");
     try {
       size_t bytes_read = 0;
       while (bytes_read < bytes_transferred) {
         auto package = tcp::Package(tcp::BufferView(
             m_buffer2.begin(), (m_buffer2.begin() + bytes_transferred)));
 
-        m_read_callback(package);
+        try {
+          m_read_callback(package);
+        } catch (const std::exception &exc) {
+          spdlog::warn("TCP callback failure: " + std::string(exc.what()));
+        }
         bytes_read += package.get_size();
       }
     } catch (const std::exception &exc) {
       spdlog::warn("TCP read parse failure: " + std::string(exc.what()));
     }
+
   } else {
-    spdlog::error("failed to read incomming TCP message");
+    spdlog::error("failed to read incomming TCP message: ");
   }
   start_reading(m_read_callback);
 }

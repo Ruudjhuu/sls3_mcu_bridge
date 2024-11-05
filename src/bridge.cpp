@@ -81,7 +81,8 @@ void Bridge::send_init_messages() {
 }
 
 void Bridge::handle_tcp_read(tcp::Package &package) {
-  std::cout << "Bridge handle read" << "\n";
+
+  spdlog::debug("Bridge handle read");
   switch (package.get_body()->get_type()) {
   case tcp::Body::Type::IncommingMidi: {
     auto midi_body =
@@ -92,7 +93,8 @@ void Bridge::handle_tcp_read(tcp::Package &package) {
   }
   case tcp::Body::Type::OutgoingMidi:
   case tcp::Body::Type::SysEx:
-    throw std::invalid_argument("Received unexpected package");
+    throw std::invalid_argument("Received unexpected package of type: " +
+                                std::to_string(package.get_body()->get_type()));
   case tcp::Body::Type::Unkown:
   default: {
     spdlog::warn("Ignored unkown package");
@@ -102,7 +104,6 @@ void Bridge::handle_tcp_read(tcp::Package &package) {
 
 void Bridge::handle_midi_read(int device_index,
                               const libremidi::message &message) {
-  std::cout << device_index << "\n";
   std::stringstream substring;
   substring << "type: " << std::hex << std::setw(2) << std::setfill('0')
             << static_cast<int>(message.get_message_type());
@@ -112,8 +113,8 @@ void Bridge::handle_midi_read(int device_index,
               << static_cast<int>(iter);
   }
 
-  spdlog::info("midi handler. message.size: " + std::to_string(message.size()) +
-               ", " + ": " + substring.str());
+  spdlog::debug("midi handler. message.size: " +
+                std::to_string(message.size()) + ", " + ": " + substring.str());
 
   auto device_byte = tcp::Package::index_to_midi_device_byte(device_index);
   std::shared_ptr<tcp::Body> body;
