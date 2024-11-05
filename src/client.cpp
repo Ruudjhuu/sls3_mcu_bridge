@@ -56,7 +56,7 @@ void Client::read_handler(const asio::error_code &error,
         bytes_read += package.get_size();
       }
     } catch (const std::exception &exc) {
-      spdlog::warn("TCP read parse failure: {}" + std::string(exc.what()));
+      spdlog::warn("TCP read parse failure: " + std::string(exc.what()));
     }
   } else {
     spdlog::error("failed to read incomming TCP message");

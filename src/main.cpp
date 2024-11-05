@@ -17,25 +17,25 @@ int main(int argc, char **argv) {
       "sls3_mcu_bridge",
       "Bridge between Presonus Studio Live Series 3 mixer and DAW");
 
-  options.add_options()("host",
-                        "hostname or ip-address of the mixer to connect to.",
-                        cxxopts::value<std::string>())(
-      "v,verbose", "info level logging.", cxxopts::value<bool>());
-
   cxxopts::ParseResult parse_result;
+
   try {
+    options.add_options()("host",
+                          "hostname or ip-address of the mixer to connect to.",
+                          cxxopts::value<std::string>())(
+        "v,verbose", "info level logging.", cxxopts::value<bool>());
     options.parse_positional({"host"});
     options.positional_help("host");
     parse_result = options.parse(argc, argv);
   } catch (const std::exception &exc) {
-    std::cout << exc.what() << std::endl << std::endl;
-    std::cout << options.help() << std::endl;
+    std::cout << exc.what() << "\n" << "\n";
+    std::cout << options.help() << "\n";
     return -1;
   }
 
   if (parse_result["host"].count() == 0) {
-    std::cout << "host is mandetory." << std::endl << std::endl;
-    std::cout << options.help() << std::endl;
+    std::cout << "host is mandetory." << "\n" << "\n";
+    std::cout << options.help() << "\n";
     return -1;
   }
 
@@ -45,13 +45,25 @@ int main(int argc, char **argv) {
       spdlog::set_level(spdlog::level::debug);
     }
   }
+
   asio::io_context io_context;
 
-  // TODO(ruud): remove the use of bind and shared_from_this in brdige so it
-  // does not have to be a shared pointer
-  auto bridge = std::make_shared<sls3mcubridge::Bridge>(
-      io_context, parse_result["host"].as<std::string>(), PORT);
-  bridge->start();
+  try {
+    // TODO(ruud): remove the use of shared pointer if possible. Currently it is
+    // needed to support shared_from_this inside the Bridge class
+    auto bridge = std::make_shared<sls3mcubridge::Bridge>(
+        io_context, parse_result["host"].as<std::string>(), PORT);
+    bridge->start();
+  } catch (std::exception &exc) {
+    spdlog::error("Failed to start bridge, exiting: " +
+                  std::string(exc.what()));
+    return -1;
+  }
 
-  io_context.run();
+  try {
+    io_context.run();
+  } catch (std::exception &exc) {
+    spdlog::error("Issue occured with async runner: " +
+                  std::string(exc.what()));
+  }
 }

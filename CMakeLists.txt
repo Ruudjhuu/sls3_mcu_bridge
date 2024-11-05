@@ -14,8 +14,9 @@ set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/src)
 
 enable_testing()
 
-add_custom_target(analyze COMMAND CodeChecker analyze --config ${PROJECT_SOURCE_DIR}/.codechecker.yaml -i ${PROJECT_SOURCE_DIR}/.codechecker_skipfile.txt -o ${PROJECT_BINARY_DIR}/codechecker/reports ${PROJECT_BINARY_DIR}/compile_commands.json)
-add_custom_target(analyze_report COMMAND CodeChecker parse -e html ${PROJECT_BINARY_DIR}/codechecker/reports --output ${PROJECT_BINARY_DIR}/codechecker_html_report)
+add_custom_target(analyze COMMAND CodeChecker analyze --clean --config ${PROJECT_SOURCE_DIR}/.codechecker.yaml -i ${PROJECT_SOURCE_DIR}/.codechecker_skipfile.txt -o ${PROJECT_BINARY_DIR}/codechecker/reports ${PROJECT_BINARY_DIR}/compile_commands.json)
+add_custom_target(analyze_report COMMAND CodeChecker parse ${PROJECT_BINARY_DIR}/codechecker/reports)
+add_custom_target(analyze_report_html COMMAND CodeChecker parse -e html ${PROJECT_BINARY_DIR}/codechecker/reports --output ${PROJECT_BINARY_DIR}/codechecker_html_report)
 
 # Program
 add_subdirectory(src)

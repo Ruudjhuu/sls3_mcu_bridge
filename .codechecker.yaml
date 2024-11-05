@@ -1,4 +1,7 @@
 analyzer:
+  # - --checker-config clang-tidy:hicpp-signed-bitwise:IgnorePositiveIntegerLiterals=1
   - --enable=sensitive
   - --enable=cppcoreguidelines
   - --enable=modernize
+  - --disable=modernize-use-trailing-return-type
+  - --disable=alpha.cplusplus.IteratorRange # too many false positives in simple ranged for loops

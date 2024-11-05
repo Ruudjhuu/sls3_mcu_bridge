@@ -8,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -17,6 +18,8 @@
 #include "spdlog/spdlog.h"
 
 #include "package.hpp"
+
+const int DELAY_BETWEEN_MIDI_DEVICE_CREATION_MS = 100;
 
 namespace sls3mcubridge {
 
@@ -50,9 +53,11 @@ Bridge::Bridge(asio::io_context &io_context, const std::string &ip_address,
   send_init_messages();
 
   midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_MAIN"));
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(DELAY_BETWEEN_MIDI_DEVICE_CREATION_MS));
   midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_EXT1"));
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(DELAY_BETWEEN_MIDI_DEVICE_CREATION_MS));
   midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_EXT2"));
 }
 
@@ -60,7 +65,7 @@ void Bridge::start() {
   tcp_client->start_reading(std::bind(
       &Bridge::handle_tcp_read, shared_from_this(), std::placeholders::_1));
 
-  for (int i = 0; i < midi_devices.size(); i++) {
+  for (size_t i = 0; i < midi_devices.size(); i++) {
     midi_devices.at(i)->start_reading(std::bind(&Bridge::handle_midi_read,
                                                 shared_from_this(), i,
                                                 std::placeholders::_2));
@@ -76,7 +81,7 @@ void Bridge::send_init_messages() {
 }
 
 void Bridge::handle_tcp_read(tcp::Package &package) {
-  std::cout << "Bridge handle read" << std::endl;
+  std::cout << "Bridge handle read" << "\n";
   switch (package.get_body()->get_type()) {
   case tcp::Body::Type::IncommingMidi: {
     auto midi_body =
@@ -85,6 +90,9 @@ void Bridge::handle_tcp_read(tcp::Package &package) {
         ->send_message(midi_body->get_message());
     break;
   }
+  case tcp::Body::Type::OutgoingMidi:
+  case tcp::Body::Type::SysEx:
+    throw std::invalid_argument("Received unexpected package");
   case tcp::Body::Type::Unkown:
   default: {
     spdlog::warn("Ignored unkown package");
@@ -94,7 +102,7 @@ void Bridge::handle_tcp_read(tcp::Package &package) {
 
 void Bridge::handle_midi_read(int device_index,
                               const libremidi::message &message) {
-  std::cout << device_index << std::endl;
+  std::cout << device_index << "\n";
   std::stringstream substring;
   substring << "type: " << std::hex << std::setw(2) << std::setfill('0')
             << static_cast<int>(message.get_message_type());
@@ -107,22 +115,7 @@ void Bridge::handle_midi_read(int device_index,
   spdlog::info("midi handler. message.size: " + std::to_string(message.size()) +
                ", " + ": " + substring.str());
 
-  auto tmp_device = std::byte(0);
-  switch (device_index) {
-  case 0:
-    tmp_device = std::byte(0x67);
-    break;
-  case 1:
-    tmp_device = std::byte(0x68);
-    break;
-  case 2:
-    tmp_device = std::byte(0x69);
-    break;
-  default:
-    spdlog::warn("Bridge midi read tries to handle unsupported device index");
-    break;
-  }
-
+  auto device_byte = tcp::Package::index_to_midi_device_byte(device_index);
   std::shared_ptr<tcp::Body> body;
   switch (message.get_message_type()) {
   case libremidi::message_type::NOTE_OFF:
@@ -133,14 +126,31 @@ void Bridge::handle_midi_read(int device_index,
   case libremidi::message_type::AFTERTOUCH:
   case libremidi::message_type::PITCH_BEND: {
     auto tmp_list = {message};
-    body = std::make_shared<tcp::OutgoingMidiBody>(tmp_device, tmp_list);
+    body = std::make_shared<tcp::OutgoingMidiBody>(device_byte, tmp_list);
     break;
   }
   case libremidi::message_type::SYSTEM_EXCLUSIVE:
-    body = std::make_shared<tcp::SysExMidiBody>(tmp_device, message);
+    body = std::make_shared<tcp::SysExMidiBody>(device_byte, message);
     break;
+
+  case libremidi::message_type::TIME_CODE:
+  case libremidi::message_type::SONG_POS_POINTER:
+  case libremidi::message_type::SONG_SELECT:
+  case libremidi::message_type::RESERVED1:
+  case libremidi::message_type::RESERVED2:
+  case libremidi::message_type::TUNE_REQUEST:
+  case libremidi::message_type::EOX:
+  case libremidi::message_type::TIME_CLOCK:
+  case libremidi::message_type::RESERVED3:
+  case libremidi::message_type::START:
+  case libremidi::message_type::CONTINUE:
+  case libremidi::message_type::STOP:
+  case libremidi::message_type::RESERVED4:
+  case libremidi::message_type::ACTIVE_SENSING:
+  case libremidi::message_type::SYSTEM_RESET:
+  case libremidi::message_type::INVALID:
   default:
-    spdlog::warn("Recieved unkown midi message");
+    spdlog::warn("Recieved unsuported midi message");
     break;
   }
 

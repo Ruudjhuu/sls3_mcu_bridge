@@ -8,11 +8,10 @@
 #include <memory>
 #include <vector>
 
-namespace sls3mcubridge {
-namespace tcp {
+namespace sls3mcubridge::tcp {
 
 const int HEADER_SIZE = 6;
-const std::byte HEADEr_FIRST_BYTE = std::byte('U');
+const std::byte HEADER_FIRST_BYTE = std::byte('U');
 const std::byte HEADER_SECOND_BYTE = std::byte('C');
 const std::byte HEADER_UNKOWN_BYTE = std::byte(0x01);
 
@@ -46,18 +45,18 @@ protected:
 class Header : public ISerialize {
 public:
   explicit Header(BufferView<std::byte *> buffer_view);
-  explicit Header(size_t body_size)
-      : m_body_size(static_cast<uint8_t>(body_size)) {}
+  explicit Header() = default;
   std::vector<std::byte> serialize() override;
-  size_t get_body_size() const { return m_body_size; }
+  [[nodiscard]] size_t get_body_size() const { return m_body_size; }
+  void set_body_size(size_t size) { m_body_size = static_cast<uint8_t>(size); }
 
 private:
-  uint8_t m_body_size;
+  uint8_t m_body_size = 0;
 };
 
 class Body : ISerialize {
 public:
-  enum Type {
+  enum Type : uint8_t {
     Unkown,
     IncommingMidi,
     OutgoingMidi,
@@ -66,10 +65,6 @@ public:
 
   static const int BODY_HEADER_SIZE = 4;
   std::vector<std::byte> serialize() override;
-  static inline const std::map<uint16_t, Type> int16_to_type_map = {
-      {19789, Type::IncommingMidi},
-      {19777, Type::OutgoingMidi},
-      {21331, Type::SysEx}};
 
   static std::shared_ptr<Body> create(BufferView<std::byte *> buffer_view);
   [[nodiscard]] const Type &get_type() const { return m_type; }
@@ -146,15 +141,18 @@ private:
 class Package : ISerialize {
 public:
   explicit Package(BufferView<std::byte *> buffer_view);
-  explicit Package(std::shared_ptr<Body> &body)
-      : m_body(body), m_header(body->get_size()) {}
+  explicit Package(std::shared_ptr<Body> &body) : m_body(body) {
+    m_header.set_body_size(body->get_size());
+  }
+  static std::byte index_to_midi_device_byte(int index);
   std::vector<std::byte> serialize() override;
   std::shared_ptr<Body> get_body() { return m_body; }
-  size_t get_size() const { return HEADER_SIZE + m_body->get_size(); }
+  [[nodiscard]] size_t get_size() const {
+    return HEADER_SIZE + m_body->get_size();
+  }
 
 private:
   Header m_header;
   std::shared_ptr<Body> m_body;
 };
-} // namespace tcp
-} // namespace sls3mcubridge
+} // namespace sls3mcubridge::tcp

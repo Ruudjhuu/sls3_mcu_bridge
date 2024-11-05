@@ -9,7 +9,7 @@
 
 namespace sls3mcubridge {
 
-MidiDevice::MidiDevice(const std::string &name) : m_name(name) {
+MidiDevice::MidiDevice(std::string name) : m_name(std::move(name)) {
   m_out.open_virtual_port(m_name);
 }
 
@@ -27,6 +27,7 @@ void MidiDevice::start_reading(
             callback(0, message);
             auto test = message.bytes;
           },
+      .get_timestamp = {},
       .ignore_sysex = 0});
   m_in->open_virtual_port(m_name);
 }

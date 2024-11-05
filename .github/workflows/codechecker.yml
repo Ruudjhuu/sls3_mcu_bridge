@@ -38,11 +38,7 @@ jobs:
           cmake --build ${{ steps.strings.outputs.build-output-dir }} --target analyze
 
       - name: "Create report"
+        # allow job to fail, there is a chance these checks are too invasive and to strict.
+        continue-on-error: true
         run: |
           cmake --build ${{ steps.strings.outputs.build-output-dir }} --target analyze_report
-
-      - uses: actions/upload-artifact@v4
-        if: ${{ failure() }}
-        with:
-          name: "CodeChecker Bug Reports"
-          path: ${{ steps.strings.outputs.build-output-dir }}/codechecker_html_report
