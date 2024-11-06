@@ -92,9 +92,15 @@ void Bridge::handle_tcp_read(tcp::Package &package) {
     break;
   }
   case tcp::Body::Type::OutgoingMidi:
-  case tcp::Body::Type::SysEx:
     throw std::invalid_argument("Received unexpected package of type: " +
                                 std::to_string(package.get_body()->get_type()));
+  case tcp::Body::Type::SysEx: {
+    auto midi_body =
+        std::dynamic_pointer_cast<tcp::SysExMidiBody>(package.get_body());
+    midi_devices.at(midi_body->get_device_index())
+        ->send_message(midi_body->get_message());
+    break;
+  }
   case tcp::Body::Type::Unkown:
   default: {
     spdlog::warn("Ignored unkown package");

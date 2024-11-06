@@ -41,6 +41,17 @@ protected:
   ISerialize() = default;
 };
 
+class MidiDeviceIndicator {
+public:
+  explicit MidiDeviceIndicator(const std::byte device_byte)
+      : m_device_byte(device_byte) {}
+  int get_index();
+  std::byte get_byte() { return m_device_byte; }
+
+private:
+  std::byte m_device_byte;
+};
+
 class Header : public ISerialize {
 public:
   explicit Header(BufferView<std::byte *> buffer_view);
@@ -88,11 +99,11 @@ public:
         m_device(device), m_message(message) {}
   explicit IncommingMidiBody(BufferView<std::byte *> buffer_view);
   std::vector<std::byte> serialize() override;
-  int get_device_index();
+  int get_device_index() { return m_device.get_index(); }
   libremidi::message &get_message() { return m_message; }
 
 private:
-  std::byte m_device;
+  MidiDeviceIndicator m_device;
   libremidi::message m_message;
 };
 
@@ -102,11 +113,11 @@ public:
                    const std::vector<libremidi::message> &message);
   explicit OutgoingMidiBody(BufferView<std::byte *> buffer_view);
   std::vector<std::byte> serialize() override;
-  int get_device_index();
+  int get_device_index() { return m_device.get_index(); }
   const std::vector<libremidi::message> &get_messages() { return m_messages; }
 
 private:
-  std::byte m_device;
+  MidiDeviceIndicator m_device;
   std::vector<libremidi::message> m_messages;
 };
 
@@ -117,11 +128,11 @@ public:
         m_device(device), m_message(message) {}
   explicit SysExMidiBody(BufferView<std::byte *> buffer_view);
   std::vector<std::byte> serialize() override;
-  int get_device_index();
+  int get_device_index() { return m_device.get_index(); }
   const libremidi::message &get_message() { return m_message; }
 
 private:
-  std::byte m_device;
+  MidiDeviceIndicator m_device;
   libremidi::message m_message;
 };
 
