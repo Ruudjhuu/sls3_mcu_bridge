@@ -21,7 +21,7 @@ const uint16_t SIZE_OF_BYTE = 8;
 
 const uint8_t INCOMMING_MIDI_DEVICE_BASE = 0x6c;
 const uint8_t OUTGOING_MIDI_DEVICE_BASE = 0x67;
-const int NR_OF_SUPPORTED_INCOMMINGMIDI_DEVICES = 5;
+const int NR_OF_SUPPORTED_DEVICES = 5;
 
 std::map<uint16_t, Body::Type> int16_to_type_map() {
   try {
@@ -176,12 +176,13 @@ uint16_t Body::find_type_in_map(Type type) {
 
 IncommingMidiBody::IncommingMidiBody(BufferView<std::byte *> buffer_view)
     : Body(Body::Type::IncommingMidi,
-           BODY_HEADER_SIZE + buffer_view.distance()) {
+           BODY_HEADER_SIZE + buffer_view.distance()),
+      m_device(std::byte(0x0)) {
   int step = 0;
   for (auto iter : buffer_view) {
     switch (step) {
     case 0:
-      m_device = iter;
+      m_device = MidiDeviceIndicator(iter);
       step++;
       break;
     case 1:
@@ -204,7 +205,7 @@ std::vector<std::byte> IncommingMidiBody::serialize() {
   auto tmp = std::vector<std::byte>();
   auto body_header = Body::serialize();
   tmp.insert(tmp.end(), body_header.begin(), body_header.end());
-  tmp.push_back(m_device);
+  tmp.push_back(m_device.get_byte());
   tmp.push_back(DELIMITER);
   for (auto &iter : m_message) {
     tmp.push_back(std::byte(iter));
@@ -213,10 +214,20 @@ std::vector<std::byte> IncommingMidiBody::serialize() {
   return tmp;
 }
 
-int IncommingMidiBody::get_device_index() {
-  for (int i = 0; i < NR_OF_SUPPORTED_INCOMMINGMIDI_DEVICES; i++) {
-    if (m_device == std::byte(INCOMMING_MIDI_DEVICE_BASE + i)) {
-      return i;
+int MidiDeviceIndicator::get_index() {
+  if (m_device_byte >= std::byte(INCOMMING_MIDI_DEVICE_BASE)) {
+    // incomming device type
+    for (int i = 0; i < NR_OF_SUPPORTED_DEVICES; i++) {
+      if (m_device_byte == std::byte(INCOMMING_MIDI_DEVICE_BASE + i)) {
+        return i;
+      }
+    }
+  } else {
+    // outgoing device type
+    for (int i = 0; i < NR_OF_SUPPORTED_DEVICES; i++) {
+      if (m_device_byte == std::byte(OUTGOING_MIDI_DEVICE_BASE + i)) {
+        return i;
+      }
     }
   }
 
@@ -237,15 +248,15 @@ OutgoingMidiBody::OutgoingMidiBody(
 }
 
 OutgoingMidiBody::OutgoingMidiBody(BufferView<std::byte *> buffer_view)
-    : Body(Body::Type::OutgoingMidi,
-           BODY_HEADER_SIZE + buffer_view.distance()) {
+    : Body(Body::Type::OutgoingMidi, BODY_HEADER_SIZE + buffer_view.distance()),
+      m_device(std::byte(0x0)) {
   int step = 0;
   libremidi::midi_bytes tmp_midi_bytes;
 
   for (const auto &iter : buffer_view) {
     switch (step) {
     case 0:
-      m_device = iter;
+      m_device = MidiDeviceIndicator(iter);
       step++;
       break;
     case 1:
@@ -274,7 +285,7 @@ std::vector<std::byte> OutgoingMidiBody::serialize() {
   auto tmp = std::vector<std::byte>();
   auto body_header = Body::serialize();
   tmp.insert(tmp.end(), body_header.begin(), body_header.end());
-  tmp.push_back(m_device);
+  tmp.push_back(m_device.get_byte());
   tmp.push_back(DELIMITER);
   tmp.push_back(std::byte(m_messages.size()));
   for (const auto &iter : m_messages) {
@@ -286,13 +297,14 @@ std::vector<std::byte> OutgoingMidiBody::serialize() {
 }
 
 SysExMidiBody::SysExMidiBody(BufferView<std::byte *> buffer_view)
-    : Body(Body::Type::SysEx, BODY_HEADER_SIZE + buffer_view.distance()) {
+    : Body(Body::Type::SysEx, BODY_HEADER_SIZE + buffer_view.distance()),
+      m_device(std::byte(0x0)) {
   int step = 0;
   size_t sysex_length = 0;
   for (const auto &iter : buffer_view) {
     switch (step) {
     case 0:
-      m_device = iter;
+      m_device = MidiDeviceIndicator(iter);
       step++;
       break;
     case 1:
@@ -324,7 +336,7 @@ std::vector<std::byte> SysExMidiBody::serialize() {
   auto tmp = std::vector<std::byte>();
   auto body_header = Body::serialize();
   tmp.insert(tmp.end(), body_header.begin(), body_header.end());
-  tmp.push_back(m_device);
+  tmp.push_back(m_device.get_byte());
   tmp.push_back(DELIMITER);
   tmp.push_back(std::byte(m_message.size()));
   tmp.push_back(DELIMITER);
