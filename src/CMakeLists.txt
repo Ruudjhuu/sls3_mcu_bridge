@@ -54,8 +54,12 @@ add_library(${CMAKE_PROJECT_NAME}_lib
   client.cpp client.hpp
   bridge.cpp bridge.hpp
   mididevice.cpp mididevice.hpp)
-target_link_libraries(${CMAKE_PROJECT_NAME}_lib PUBLIC libremidi asio spdlog)
+target_link_libraries(${CMAKE_PROJECT_NAME}_lib PUBLIC libremidi asio spdlog gcov)
 set_property(TARGET ${CMAKE_PROJECT_NAME}_lib  PROPERTY COMPILE_WARNING_AS_ERROR ON)
+
+target_compile_options(${CMAKE_PROJECT_NAME}_lib PUBLIC 
+"--coverage")
+target_link_options(${CMAKE_PROJECT_NAME}_lib PUBLIC "-coverage")
 
 # Executable
 add_executable(${CMAKE_PROJECT_NAME})

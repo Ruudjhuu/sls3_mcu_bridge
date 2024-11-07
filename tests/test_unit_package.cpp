@@ -168,4 +168,31 @@ TEST(TestTcpPackageCreation, testPackageSerialization) {
             output.serialize());
   ASSERT_EQ(output.get_size(), input.size());
 }
+
+TEST(TestTcpPackageCreation, testMidiDeviceIndicatorGetIndexIncomming) {
+  auto dev = MidiDeviceIndicator(std::byte(0x6c));
+  ASSERT_EQ(dev.get_index(), 0);
+  dev = MidiDeviceIndicator(std::byte(0x6d));
+  ASSERT_EQ(dev.get_index(), 1);
+  dev = MidiDeviceIndicator(std::byte(0x6e));
+  ASSERT_EQ(dev.get_index(), 2);
+  dev = MidiDeviceIndicator(std::byte(0x6f));
+  ASSERT_EQ(dev.get_index(), 3);
+  dev = MidiDeviceIndicator(std::byte(0x70));
+  ASSERT_EQ(dev.get_index(), 4);
+}
+
+TEST(TestTcpPackageCreation, testMidiDeviceIndicatorGetOutgoing) {
+  auto dev = MidiDeviceIndicator(std::byte(0x67));
+  ASSERT_EQ(dev.get_index(), 0);
+  dev = MidiDeviceIndicator(std::byte(0x68));
+  ASSERT_EQ(dev.get_index(), 1);
+  dev = MidiDeviceIndicator(std::byte(0x69));
+  ASSERT_EQ(dev.get_index(), 2);
+  dev = MidiDeviceIndicator(std::byte(0x6a));
+  ASSERT_EQ(dev.get_index(), 3);
+  dev = MidiDeviceIndicator(std::byte(0x6b));
+  ASSERT_EQ(dev.get_index(), 4);
+}
+
 } // namespace sls3mcubridge::tcp
