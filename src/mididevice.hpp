@@ -1,8 +1,10 @@
-#include <functional>
-#include <memory>
+#pragma once
 
 #include "libremidi/libremidi.hpp"
 #include "libremidi/message.hpp"
+
+#include <functional>
+#include <memory>
 
 namespace sls3mcubridge {
 
