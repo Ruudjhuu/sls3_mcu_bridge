@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstddef>
-#include <functional>
 #include <memory>
 #include <string>
 
@@ -10,11 +9,12 @@
 #include "asio/io_context.hpp"
 #include "asio/ip/tcp.hpp"
 
-#include "package.hpp"
+namespace sls3mcubridge {
+namespace tcp {
+class Package;
+} // namespace tcp
 
 const size_t MAX_BUFFER_SIZE = 1500;
-
-namespace sls3mcubridge {
 class Client : public std::enable_shared_from_this<Client> {
 public:
   explicit Client(asio::io_context &io_context) : m_socket(io_context) {}

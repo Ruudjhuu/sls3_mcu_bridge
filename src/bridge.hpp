@@ -1,15 +1,18 @@
 #pragma once
 
+#include "asio/io_context.hpp"
+#include "libremidi/message.hpp"
+
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "asio/io_context.hpp"
-
-#include "client.hpp"
-#include "mididevice.hpp"
-
 namespace sls3mcubridge {
+class MidiDevice;
+class Client;
+namespace tcp {
+class Package;
+} // namespace tcp
 
 class Bridge : public std::enable_shared_from_this<Bridge> {
 public:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "libremidi/message.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <iterator>

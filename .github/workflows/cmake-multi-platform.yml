@@ -3,10 +3,8 @@
 name: CMake on multiple platforms
 
 on:
-  push:
-    branches: ["master"]
   pull_request:
-    branches: ["master"]
+    branches: ["main"]
 
 jobs:
   build:

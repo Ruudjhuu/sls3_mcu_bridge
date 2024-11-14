@@ -1,11 +1,7 @@
 
 #include "client.hpp"
 
-#include <cstddef>
-#include <exception>
-#include <functional>
-#include <string>
-#include <sys/types.h>
+#include "package.hpp"
 
 #include "asio/buffer.hpp"
 #include "asio/connect.hpp"
@@ -13,7 +9,11 @@
 #include "asio/placeholders.hpp"
 #include "spdlog/spdlog.h"
 
-#include "package.hpp"
+#include <cstddef>
+#include <exception>
+#include <functional>
+#include <string>
+#include <sys/types.h>
 
 namespace sls3mcubridge {
 void Client::connect(const std::string &host, int const &port) {

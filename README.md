@@ -56,3 +56,24 @@ If you can confirm or have issues with other devices/firmware versions, please c
 
 ## Contributing
 If you want to contribute to this project, fork this repository and create a pull request.
+
+### build project
+``` bash
+sls3_mcu_bridge> mkdir build && cd build
+sls3_mcu_bridge/build> cmake .. && cmake --build . -j `nproc`
+```
+
+### run tests
+```bash
+sls3_mcu_bridge/build> ctest
+```
+
+### measure test coverage
+```bash
+sls3_mcu_bridge/build> cmake .. -DCMAKE_BUILD_TYPE:STRING=Debug && cmake --build . -j`nproc` && ctest -T Test -T Coverage
+```
+
+### analyze code
+```bash
+sls3_mcu_bridge/build> cmake --build . --target analyze && cmake --build . --target analyze_report
+```

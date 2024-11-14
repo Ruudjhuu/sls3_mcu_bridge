@@ -1,23 +1,25 @@
+
 #include "bridge.hpp"
+
+#include "client.hpp"
+#include "mididevice.hpp"
+#include "package.hpp"
+
+#include "asio/buffer.hpp"
+#include "libremidi/message.hpp"
+#include "spdlog/spdlog.h"
 
 #include <array>
 #include <chrono>
 #include <cstddef>
 #include <iomanip>
 #include <ios>
-#include <iostream>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
-
-#include "asio/buffer.hpp"
-#include "libremidi/message.hpp"
-#include "spdlog/spdlog.h"
-
-#include "package.hpp"
 
 const int DELAY_BETWEEN_MIDI_DEVICE_CREATION_MS = 100;
 
