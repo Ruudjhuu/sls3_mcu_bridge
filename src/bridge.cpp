@@ -18,10 +18,15 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
 const int DELAY_BETWEEN_MIDI_DEVICE_CREATION_MS = 100;
+const size_t MAX_INITIAL_MESSAGE_SIZE = 400;
+
+const std::array<std::string_view, 5> MIDI_DEVICE_NAMES = {
+    "MAIN", "EXT1", "EXT2", "EXT3", "EXT4"};
 
 namespace sls3mcubridge {
 
@@ -52,15 +57,7 @@ Bridge::Bridge(asio::io_context &io_context, const std::string &ip_address,
                int port)
     : tcp_client(std::make_shared<Client>(io_context)) {
   tcp_client->connect(ip_address, port);
-  send_init_messages();
-
-  midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_MAIN"));
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds(DELAY_BETWEEN_MIDI_DEVICE_CREATION_MS));
-  midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_EXT1"));
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds(DELAY_BETWEEN_MIDI_DEVICE_CREATION_MS));
-  midi_devices.push_back(std::make_shared<MidiDevice>("StudioLive_EXT2"));
+  init();
 }
 
 void Bridge::start() {
@@ -74,11 +71,38 @@ void Bridge::start() {
   }
 }
 
-void Bridge::send_init_messages() {
+void Bridge::init() {
   tcp_client->write(asio::buffer(FIRST_INIT_MESSAGE));
 
-  // TODO(ruud): try to get number of midi devices from response
+  spdlog::info("getting midi device requirements from mixer.");
 
+  std::array<std::byte, MAX_INITIAL_MESSAGE_SIZE> buffer{};
+  auto bytes_read = tcp_client->read_some(asio::buffer(buffer));
+  auto package = tcp::Package(
+      tcp::BufferView(buffer.begin(), buffer.begin() + bytes_read));
+
+  switch (package.get_body()->get_type()) {
+  case tcp::Body::Type::InitialResponse: {
+    auto body =
+        std::dynamic_pointer_cast<tcp::InitialResponseBody>(package.get_body());
+    auto nr_devices = body->get_nr_of_midi_devices();
+
+    for (uint8_t i = 0; i < nr_devices; i++) {
+      midi_devices.push_back(std::make_shared<MidiDevice>(
+          "StudioLive_" + std::string(MIDI_DEVICE_NAMES.at(i))));
+      spdlog::info("Created midi device StudioLive_" +
+                   std::string(MIDI_DEVICE_NAMES.at(i)));
+      // Not entirely sure why the sleep is needed. On Linux some devices seem
+      // to not be created when executed too fast after each other.
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(DELAY_BETWEEN_MIDI_DEVICE_CREATION_MS));
+    }
+    break;
+  }
+  default:
+    throw std::runtime_error("Expected initialResponse, got: " +
+                             std::to_string(package.get_body()->get_type()));
+  }
   tcp_client->write(asio::buffer(SECOND_INIT_MESSAGE));
 }
 
