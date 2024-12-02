@@ -24,6 +24,7 @@ private:
   std::string m_name;
   libremidi::midi_out m_out;
   std::shared_ptr<libremidi::midi_in> m_in;
+  bool m_received_first_message = false;
 };
 
 } // namespace sls3mcubridge
