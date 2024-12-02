@@ -69,6 +69,7 @@ class Body : ISerialize {
 public:
   enum Type : uint8_t {
     Unkown,
+    InitialResponse,
     IncommingMidi,
     OutgoingMidi,
     SysEx,
@@ -135,6 +136,20 @@ public:
 private:
   MidiDeviceIndicator m_device;
   libremidi::message m_message;
+};
+
+class InitialResponseBody : public Body {
+public:
+  explicit InitialResponseBody(BufferView<std::byte *> buffer_view)
+      : Body(Body::Type::InitialResponse,
+             BODY_HEADER_SIZE + buffer_view.distance()),
+        m_content(buffer_view.begin(), buffer_view.end()) {}
+  std::vector<std::byte> serialize() override;
+  std::vector<std::byte> get_content() { return m_content; }
+  uint8_t get_nr_of_midi_devices();
+
+private:
+  std::vector<std::byte> m_content;
 };
 
 class UnkownBody : public Body {
