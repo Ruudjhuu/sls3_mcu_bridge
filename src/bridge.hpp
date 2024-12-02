@@ -20,7 +20,7 @@ public:
   void start();
 
 private:
-  void init();
+  void send_init_messages();
   void handle_tcp_read(tcp::Package &package);
   void handle_midi_read(int device_index, const libremidi::message &message);
   std::shared_ptr<Client> tcp_client;

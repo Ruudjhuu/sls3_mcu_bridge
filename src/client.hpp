@@ -20,9 +20,6 @@ public:
   explicit Client(asio::io_context &io_context) : m_socket(io_context) {}
   void connect(std::string const &host, int const &port);
   void write(const asio::const_buffer &message);
-  size_t read_some(const asio::mutable_buffers_1 &buffer) {
-    return m_socket.read_some(buffer);
-  }
   void start_reading(const std::function<void(tcp::Package &)> &callback);
 
 private:

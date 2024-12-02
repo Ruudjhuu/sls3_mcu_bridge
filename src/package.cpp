@@ -23,14 +23,9 @@ const uint8_t INCOMMING_MIDI_DEVICE_BASE = 0x6c;
 const uint8_t OUTGOING_MIDI_DEVICE_BASE = 0x67;
 const int NR_OF_SUPPORTED_DEVICES = 5;
 
-const std::byte INITIAL_RESPONSE_THIRD_BYTE = std::byte(0x65);
-
-const std::string_view MIDI_STRING = "midi";
-
 std::map<uint16_t, Body::Type> int16_to_type_map() {
   try {
     static const std::map<uint16_t, Body::Type> int16_to_type_map = {
-        {16975, Body::Type::InitialResponse},
         {19789, Body::Type::IncommingMidi},
         {19777, Body::Type::OutgoingMidi},
         {21331, Body::Type::SysEx}};
@@ -125,12 +120,6 @@ std::shared_ptr<Body> Body::create(BufferView<std::byte *> buffer_view) {
       step++;
       break;
     case 2:
-      // TODO(ruud): This byte is ignored for now, the midi related bodies have
-      // a delimiter here, the initialresponse body has a value for which the
-      // use is currently unkow. A proper solution would to diferenciate "midi
-      // bodies" and "other bodies"
-      step++;
-      break;
     case 3:
       if (iter != DELIMITER) {
         throw std::invalid_argument("Expected delimiter at step " +
@@ -152,8 +141,6 @@ std::shared_ptr<Body> Body::create(BufferView<std::byte *> buffer_view) {
   auto sub_body_view = BufferView(header_view.end(), buffer_view.end());
 
   switch (type) {
-  case Type::InitialResponse:
-    return std::make_shared<InitialResponseBody>(sub_body_view);
   case Type::IncommingMidi:
     return std::make_shared<IncommingMidiBody>(sub_body_view);
   case Type::OutgoingMidi:
@@ -172,11 +159,7 @@ std::vector<std::byte> Body::serialize() {
   tmp.push_back(
       std::byte(type_int >> (sizeof(decltype(tmp)::value_type) * CHAR_BIT)));
   tmp.push_back(std::byte(type_int));
-  if (m_type == Type::InitialResponse) {
-    tmp.push_back(std::byte(INITIAL_RESPONSE_THIRD_BYTE));
-  } else {
-    tmp.push_back(DELIMITER);
-  }
+  tmp.push_back(DELIMITER);
   tmp.push_back(DELIMITER);
   return tmp;
 }
@@ -380,28 +363,6 @@ std::vector<std::byte> Package::serialize() {
 
 std::byte Package::index_to_midi_device_byte(int index) {
   return std::byte(OUTGOING_MIDI_DEVICE_BASE + index);
-}
-
-std::vector<std::byte> InitialResponseBody::serialize() {
-  auto body_header = Body::serialize();
-  std::vector<std::byte> tmp;
-  tmp.insert(tmp.end(), body_header.begin(), body_header.end());
-  tmp.insert(tmp.end(), m_content.begin(), m_content.end());
-  return tmp;
-}
-
-uint8_t InitialResponseBody::get_nr_of_midi_devices() {
-  std::string content_string;
-  for (const auto &iter : m_content) {
-    content_string += static_cast<char>(iter);
-  }
-  uint8_t occurences = 0;
-  std::string::size_type pos = 0;
-  while ((pos = content_string.find(MIDI_STRING, pos)) != std::string::npos) {
-    occurences++;
-    pos += MIDI_STRING.length();
-  }
-  return occurences;
 }
 
 std::vector<std::byte> UnkownBody::serialize() {
